@@ -57,7 +57,7 @@ export default function Navbar({ onMenuClick }) {
         {/* Logo and Sidebar Toggle */}
         <div className="flex items-center gap-2 sm:gap-3">
           {onMenuClick && (
-            <button onClick={onMenuClick} className="lg:hidden p-2 -mr-2 text-[#756E85] hover:bg-[#FBF7EE] rounded-xl transition-colors" title="فتح القائمة">
+            <button onClick={onMenuClick} aria-label="فتح القائمة" className="lg:hidden p-3 -mr-2 text-[#756E85] hover:bg-[#FBF7EE] rounded-xl transition-colors" title="فتح القائمة">
               <Menu className="w-5 h-5" />
             </button>
           )}
@@ -162,6 +162,8 @@ export default function Navbar({ onMenuClick }) {
               {isLanding && (
                 <button 
                   onClick={() => setMenuOpen(!menuOpen)} 
+                  aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'}
+                  aria-expanded={menuOpen}
                   className="md:hidden p-2 -ml-2 text-[#2A2438] hover:bg-[#FBF7EE] rounded-xl"
                 >
                   {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

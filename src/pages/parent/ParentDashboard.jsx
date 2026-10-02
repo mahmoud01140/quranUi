@@ -32,7 +32,6 @@ export default function ParentDashboard() {
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
-  const homeworkPagination = usePagination(childProgress?.homework || [], 4);
   const recordsPagination = usePagination(childProgress?.recentRecords || [], 5);
 
   // Link child states (logic unchanged)
@@ -149,7 +148,6 @@ export default function ParentDashboard() {
   const selectedChild = children.find(k => k._id === selectedChildId);
   const today = childProgress?.attendance?.todaySession;
   const todayTone = today ? (STATUS_TONE[today.attendanceStatus] || (today.sessionStatus === 'live' ? STATUS_TONE.in_progress : null)) : null;
-  const pendingHw = (childProgress?.homework || []).filter(h => !h.submitted).length;
   const latestTeacherNote =
     childProgress?.recentRecords?.find(r => r.teacherNotes)?.teacherNotes ||
     childProgress?.examResults?.find(r => r.teacherNotes)?.teacherNotes || '';
@@ -259,7 +257,6 @@ export default function ParentDashboard() {
                   <div className="hq-facts" style={{ marginBottom: latestTeacherNote ? 12 : 0 }}>
                     <span><strong>{(childProgress.stats?.totalVersesMemorized || 0) + (childProgress.stats?.totalVersesReviewed || 0)}</strong> <span>آية هذا الأسبوع</span></span>
                     <span><strong>{childProgress.attendance?.rate || 0}%</strong> <span>حضور ({childProgress.attendance?.attendedClasses || 0} من {childProgress.attendance?.totalClasses || 0})</span></span>
-                    <span><strong>{pendingHw}</strong> <span>واجب معلق</span></span>
                   </div>
 
                   {latestTeacherNote && (
@@ -334,12 +331,12 @@ export default function ParentDashboard() {
                   )}
                 </section>
 
-                {/* 4. Exams + homework */}
-                <section aria-label="الاختبارات والواجبات"
+                {/* 4. Exams */}
+                <section aria-label="الاختبارات"
                   style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 20, marginBottom: 16 }}>
-                  <h2 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: HQ.INK }}>الاختبارات والواجبات</h2>
-                  {!childProgress.examResults?.length && !childProgress.homework?.length ? (
-                    <p style={{ fontSize: 14, color: HQ.MUTED, margin: 0 }}>لا اختبارات أو واجبات مسجلة بعد.</p>
+                  <h2 style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 800, color: HQ.INK }}>الاختبارات</h2>
+                  {!childProgress.examResults?.length ? (
+                    <p style={{ fontSize: 14, color: HQ.MUTED, margin: 0 }}>لا اختبارات مسجلة بعد.</p>
                   ) : (
                     <>
                       {(childProgress.examResults || []).slice(0, 4).map((result) => (
@@ -358,18 +355,6 @@ export default function ParentDashboard() {
                               {result.teacherNotes}
                             </span>
                           )}
-                        </div>
-                      ))}
-                      {(homeworkPagination.paginatedItems || []).map((hw) => (
-                        <div key={hw.sessionId || hw._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: `1px solid ${HQ.LINE}` }}>
-                          <span aria-hidden style={{ width: 10, height: 10, borderRadius: 9999, background: hw.submitted ? HQ.MENTOR : hw.overdue ? '#C2410C' : '#B45309', flex: 'none' }} />
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <strong style={{ display: 'block', fontSize: 14, color: HQ.INK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hw.title}</strong>
-                            <span style={{ display: 'block', fontSize: 12, color: HQ.MUTED }}>
-                              {hw.submitted ? 'مُسلَّم' : hw.overdue ? 'متأخر' : 'بانتظار التسليم'}
-                              {hw.deadline ? ` · الموعد ${new Date(hw.deadline).toLocaleDateString('ar-EG')}` : ''}
-                            </span>
-                          </span>
                         </div>
                       ))}
                     </>

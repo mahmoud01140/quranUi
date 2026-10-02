@@ -31,15 +31,23 @@ const FILE_TONE = {
 
 export default function StudentResourcesPage() {
   const { user } = useAuthStore();
-  const { resources, isLoading, fetchGroupResources, trackDownload } = useResourceStore();
+  const { resources, isLoading, fetchGeneralResources, fetchGroupResources, trackDownload } = useResourceStore();
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [activePdf, setActivePdf] = useState(null);
+  const [accessDenied, setAccessDenied] = useState('');
 
   const groupId = user?.group?._id || user?.group;
   const pagination = usePagination(resources, 6);
 
   useEffect(() => {
-    if (groupId) fetchGroupResources(groupId, { category: categoryFilter !== 'all' ? categoryFilter : undefined });
+    setAccessDenied('');
+    if (groupId) {
+      fetchGroupResources(groupId, { category: categoryFilter !== 'all' ? categoryFilter : undefined });
+    } else {
+      // المكتبة العامة: للمحدد مستواهم والمسددين
+      fetchGeneralResources({ category: categoryFilter !== 'all' ? categoryFilter : undefined })
+        .catch(err => setAccessDenied(err?.response?.data?.message || 'تعذر تحميل المكتبة'));
+    }
   }, [groupId, categoryFilter]);
 
   const handleDownload = (resource) => {
@@ -75,10 +83,11 @@ export default function StudentResourcesPage() {
           ))}
         </div>
 
-        {!groupId ? (
+        {!groupId && accessDenied ? (
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 48, textAlign: 'center' }}>
             <FolderOpen size={40} color={HQ.LINE} style={{ margin: '0 auto 12px' }} />
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: HQ.INK }}>لم يتم تعيينك في مجموعة بعد</p>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: HQ.INK }}>المكتبة غير متاحة حالياً</p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.MUTED }}>{accessDenied}</p>
           </div>
         ) : isLoading ? (
           <div aria-label="جارٍ تحميل المصادر">

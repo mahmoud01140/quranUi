@@ -47,7 +47,7 @@ export default function Pagination({
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '8px 12px', borderRadius: 12, border: `1px solid ${HQ.LINE}`,
     background: HQ.SURFACE, color: HQ.INK,
-    fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', minHeight: 40,
+    fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', minHeight: 44,
   };
 
   return (
@@ -78,7 +78,7 @@ export default function Pagination({
               className="text-xs"
               style={{
                 background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, color: HQ.INK,
-                borderRadius: 8, padding: '6px 8px', minHeight: 40, cursor: 'pointer',
+                borderRadius: 8, padding: '6px 8px', minHeight: 44, cursor: 'pointer',
               }}
             >
               {pageSizeOptions.map((opt) => (
@@ -128,9 +128,9 @@ export default function Pagination({
                   key={`page-${p}`}
                   type="button"
                   onClick={() => onPageChange?.(p)}
-                  className="w-8 h-8 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center"
+                  className="w-11 h-11 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center"
                   style={{
-                    minWidth: 32, minHeight: 32,
+                    minWidth: 44, minHeight: 44,
                     background: isActive ? HQ.MENTOR : HQ.SURFACE,
                     color: isActive ? '#fff' : HQ.INK,
                     border: isActive ? 'none' : `1px solid ${HQ.LINE}`,

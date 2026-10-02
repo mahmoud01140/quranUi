@@ -7,6 +7,7 @@ import useAuthStore from '../../store/authStore';
 import useExamStore from '../../store/examStore';
 import useMediaRecorder from '../../hooks/useMediaRecorder';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { formatCountdown } from '../../utils/helpers';
 import './Onboarding.css';
 
@@ -221,6 +222,7 @@ export default function WrittenExamPage() {
   const autoSubmittedRef = useRef(false);
   // Track which recitation questions have been recorded
   const [recitationSaved, setRecitationSaved] = useState({});
+  const [submitConfirm, setSubmitConfirm] = useState(null); // null | 'recitation' | 'incomplete'
 
   const regType = user?.registrationType || 'student';
 
@@ -294,11 +296,8 @@ export default function WrittenExamPage() {
         const unrecordedRecitations = (currentExam?.questions || []).filter(
           (q, idx) => q.type === 'recitation' && !recitationSaved[idx]
         );
-        if (unrecordedRecitations.length > 0) {
-          if (!window.confirm(`لديك ${unrecordedRecitations.length} سؤال/أسئلة شفهية لم تسجل لها صوتاً بعد. هل تريد التسليم بدون تسجيل؟`)) return;
-        } else {
-          if (!window.confirm('لم تجب على جميع الأسئلة. هل تريد التسليم الآن؟')) return;
-        }
+        setSubmitConfirm(unrecordedRecitations.length > 0 ? 'recitation' : 'incomplete');
+        return;
       }
     }
     try {
@@ -519,13 +518,25 @@ export default function WrittenExamPage() {
                 aria-current={i === currentQ ? 'true' : undefined}
                 className={`onb-dot${i === currentQ ? ' now' : isAnswered(i) ? ' ans' : ''}${q.type === 'recitation' ? ' oral' : ''}`}
               >
-                {q.type === 'recitation' ? '🎙' : i + 1}
+                {q.type === 'recitation' ? 'شفهي' : i + 1}
               </button>
             ))}
           </div>
+          </div>
         </div>
-      </div>
-    </MotionConfig>
+
+        {/* Submit confirm */}
+        <ConfirmModal
+          open={Boolean(submitConfirm)}
+          title="تسليم الامتحان؟"
+          message={submitConfirm === 'recitation'
+            ? 'لديك أسئلة شفهية لم تسجل لها صوتاً بعد. يمكنك التسجيل لاحقاً في صفحة الامتحان الشفهي.'
+            : 'لم تجب على جميع الأسئلة. يمكنك التسليم وستُحتسب الإجابات الفارغة خاطئة.'}
+          confirmLabel="تسليم"
+          onConfirm={async () => { setSubmitConfirm(null); await doSubmit(); }}
+          onClose={() => setSubmitConfirm(null)}
+        />
+      </MotionConfig>
   );
 }
 

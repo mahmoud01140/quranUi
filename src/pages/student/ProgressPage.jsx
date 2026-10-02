@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  BookOpen, Award, RotateCcw,
+  BookOpen, RotateCcw,
   AlertCircle, CheckCircle2,
 } from 'lucide-react';
 import PageLayout from '../../components/shared/PageLayout';
-import IjazahCertificateModal from '../../components/shared/IjazahCertificateModal';
 import useAuthStore from '../../store/authStore';
-import useGroupStore from '../../store/groupStore';
-import useSessionFeedbackStore from '../../store/sessionFeedbackStore';
 import { getJuzPercentage, getLevelLabel, formatDateAr, timeAgoAr, getSmartDateLabel } from '../../utils/helpers';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
@@ -19,23 +16,18 @@ const JUZ = Array.from({ length: 30 }, (_, i) => i + 1);
 
 export default function ProgressPage() {
   const { user } = useAuthStore();
-  const { studyPlan, fetchStudyPlan } = useGroupStore();
-  const { myFeedbacks, avgRatings, fetchMyFeedbacks } = useSessionFeedbackStore();
 
   const [lessons, setLessons] = useState([]);
+  const [studyPlan, setStudyPlan] = useState(null);
   const [weakPoints, setWeakPoints] = useState([]);
-  const [ijazah, setIjazah] = useState(null);
   const [nextSession, setNextSession] = useState(null);
   const [liveNow, setLiveNow] = useState(false);
   const [hasAttendedLive, setHasAttendedLive] = useState(false);
-  const [pendingHomework, setPendingHomework] = useState(null);
   const [pendingExams, setPendingExams] = useState(null);
-  const [isCertificateOpen, setIsCertificateOpen] = useState(false);
   const [juzOpen, setJuzOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
-  const groupId = user?.group?._id || user?.group;
   const myId = user?._id?.toString();
 
   const loadAll = useCallback(async () => {
@@ -46,33 +38,31 @@ export default function ProgressPage() {
       try { await fn(); ok++; } catch (_) {}
     };
     await Promise.all([
-      settle(async () => { if (groupId) await fetchStudyPlan(groupId); }),
-      settle(() => fetchMyFeedbacks()),
       settle(async () => {
         const res = await api.get('/exams/weak-points/my');
         setWeakPoints(res.data.weakPoints || []);
       }),
       settle(async () => {
-        const res = await api.get('/ijazah/my');
-        setIjazah(res.data.ijazah || null);
-      }),
-      settle(async () => {
-        if (!groupId) return;
+        // Individual plan first, group plan as legacy fallback
+        const indRes = await api.get(`/study-plans/student/${user?._id}/full`).catch(() => null);
+        if (indRes?.data?.plan?.customLessons) {
+          setStudyPlan(indRes.data.plan);
+          setLessons(indRes.data.plan.customLessons);
+          return;
+        }
+        const groupId = user?.group?._id || user?.group;
+        if (!groupId) { setStudyPlan(null); setLessons([]); return; }
         const res = await api.get(`/study-plans/group/${groupId}/full`);
+        setStudyPlan(res.data.plan || null);
         setLessons(res.data.plan?.customLessons || []);
       }),
       settle(async () => {
-        if (!groupId) return;
-        const res = await api.get(`/live/group/${groupId}`);
-        const sessions = res.data.sessions || [];
+        // My own 1-on-1 sessions history
+        const res = await api.get('/live/mine').catch(() => null);
+        const sessions = res?.data?.sessions || [];
         const live = sessions.find(s => s.status === 'live');
         setLiveNow(Boolean(live));
-        if (!live) {
-          const upcoming = sessions
-            .filter(s => s.status === 'scheduled' && s.scheduledAt)
-            .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt))[0];
-          setNextSession(upcoming || null);
-        } else setNextSession(live);
+        setNextSession(live || null);
         // Real attendance: my id in attendees or in present/late records
         if (myId) {
           const attended = sessions.some(s => {
@@ -90,21 +80,10 @@ export default function ProgressPage() {
         const arr = Array.isArray(list) ? list : [];
         setPendingExams(arr.filter(e => !e.isCompleted).length);
       }),
-      settle(async () => {
-        if (!groupId || !myId) return;
-        const res = await api.get(`/live/group/${groupId}/homework`);
-        const sessions = res.data.sessions || [];
-        const pending = sessions.filter(s => {
-          if (!s.homework && !s.quranHomework) return false;
-          const subs = s.homeworkSubmissions || [];
-          return !subs.some(sub => ((sub.student?._id || sub.student)?.toString()) === myId);
-        }).length;
-        setPendingHomework(pending);
-      }),
     ]);
     if (ok === 0) setLoadFailed(true);
     setLoading(false);
-  }, [groupId, myId]);
+  }, [myId, user?._id]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -124,31 +103,26 @@ export default function ProgressPage() {
   const totalLessons = lessons.length;
   const curriculumPct = totalLessons ? Math.round((completedLessons / totalLessons) * 100) : 0;
   const openWeak = weakPoints.filter(w => w.status !== 'mastered');
-  const latestFeedback = myFeedbacks?.[0];
-  const groupName = typeof user?.group === 'object' ? (user.group?.name || '') : '';
-  const awarded = ijazah?.status === 'awarded';
-  // Tasks counts are only trustworthy once BOTH fetches resolved —
+  // Tasks counts are only trustworthy once the exams fetch resolved —
   // a 0 from a failed request must never read as "done".
-  const tasksKnown = pendingHomework !== null && pendingExams !== null;
+  const tasksKnown = pendingExams !== null;
 
-  /* Sequential status: the first non-completed node is current */
+  /* Sequential status: the first non-completed node is current (individual system: no groups) */
   const done = {
     registration: true,
     placement: Boolean(user?.placementExamTaken),
     level: Boolean(user?.assignedLevel),
-    group: Boolean(groupId),
     curriculum: totalLessons > 0 && completedLessons >= totalLessons,
     live: hasAttendedLive,
-    tasks: Boolean(groupId) && tasksKnown && pendingHomework === 0 && pendingExams === 0,
+    tasks: tasksKnown && pendingExams === 0,
     khatm: juzPct >= 100,
-    ijazah: awarded,
   };
-  const order = ['placement', 'level', 'group', 'curriculum', 'live', 'tasks', 'khatm', 'ijazah'];
+  const order = ['placement', 'level', 'curriculum', 'live', 'tasks', 'khatm'];
   const currentKey = order.find(k => !done[k]);
   const st = (key) => {
     if (done[key]) return 'completed';
     if (key === currentKey) return 'current';
-    if (key === 'level' || key === 'group') return 'locked';
+    if (key === 'level') return 'locked';
     return 'upcoming';
   };
 
@@ -213,48 +187,12 @@ export default function ProgressPage() {
               <JourneyNode index={3} title="المستوى" status={st('level')}
                 proof={user?.assignedLevel ? getLevelLabel(user.assignedLevel) : 'ستتاح بعد اعتماد نتيجة تحديد المستوى'} />
 
-              {/* 4. Group + embedded teacher note */}
-              <JourneyNode index={4} title="المجموعة" status={st('group')}
-                proof={groupName || 'ستتاح بعد تعيينك في مجموعة تناسب مستواك'}
-                action={done.group && (
-                  <HqActionLink to="/student/curriculum?tab=group" primary={false}>عرض مجموعتي</HqActionLink>
-                )}>
-                {latestFeedback && (
-                  <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 12 }}>
-                    <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: HQ.MUTED }}>
-                      آخر كلمة من معلمك — {latestFeedback.teacher?.firstName} {latestFeedback.teacher?.lastName} · {timeAgoAr(latestFeedback.sessionDate)}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 15, color: HQ.INK, lineHeight: 1.8 }}>
-                      {latestFeedback.generalNotes || latestFeedback.strengths || 'واصل التقدم — معلمك يتابعك.'}
-                    </p>
-                  </div>
-                )}
-              </JourneyNode>
-
-              {/* 5. Curriculum + embedded skills & flagged review */}
-              <JourneyNode index={5} title="المنهج" status={st('curriculum')}
-                proof={totalLessons ? `${completedLessons} من ${totalLessons} درسًا (${curriculumPct}%)` : 'ستتاح بعد تعيين منهج مجموعتك'}
-                action={done.group && (
-                  <HqActionLink to="/student/curriculum" primary={st('curriculum') === 'current'}>تابع دروسك</HqActionLink>
-                )}>
-                {avgRatings && (
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: openWeak.length ? 12 : 0 }}>
-                    {[
-                      { label: 'التلاوة', v: avgRatings.recitation },
-                      { label: 'الحفظ', v: avgRatings.memorization },
-                      { label: 'الانتباه', v: avgRatings.attention },
-                    ].map(s => (
-                      <div key={s.label} style={{ flex: '1 1 120px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: HQ.MUTED, marginBottom: 4 }}>
-                          <span>{s.label}</span><span>{s.v ?? '—'}</span>
-                        </div>
-                        <div style={{ height: 8, borderRadius: 9999, background: HQ.LINE, overflow: 'hidden' }} role="img" aria-label={`${s.label}: ${s.v} من 5`}>
-                          <div style={{ height: '100%', width: `${Math.min(100, ((s.v || 0) / 5) * 100)}%`, background: HQ.MENTOR, borderRadius: 9999 }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* 4. Curriculum + embedded skills & flagged review */}
+              <JourneyNode index={4} title="المنهج" status={st('curriculum')}
+                proof={totalLessons ? `${completedLessons} من ${totalLessons} درسًا (${curriculumPct}%)` : 'ستظهر حصصك هنا بعد أول بث مباشر مع معلمك'}
+                action={
+                  <HqActionLink to="/student/curriculum" primary={st('curriculum') === 'current'}>تابع حصصك</HqActionLink>
+                }>
                 {openWeak.length > 0 && (
                   <div>
                     <p style={{ fontSize: 13, fontWeight: 700, color: HQ.MUTED, margin: '0 0 8px' }}>
@@ -275,33 +213,32 @@ export default function ProgressPage() {
                 )}
               </JourneyNode>
 
-              {/* 6. Live */}
-              <JourneyNode index={6} title="الحصة المباشرة" status={liveNow ? 'current' : st('live')}
+              {/* 5. Live */}
+              <JourneyNode index={5} title="الحصة المباشرة" status={liveNow ? 'current' : st('live')}
                 proof={hasAttendedLive
                   ? 'حضرت حصصاً مباشرة — واصل الحضور'
-                  : liveNow ? 'حلقة جارية الآن — معلمك بانتظارك' : nextSession?.scheduledAt ? `الحصة القادمة: ${getSmartDateLabel(nextSession.scheduledAt)}` : 'تُعلن الحصة القادمة في مجموعتك — تُحتسب بعد أول حضور لك'}
+                  : liveNow ? 'حصة جارية الآن — معلمك بانتظارك' : nextSession?.scheduledAt ? `الحصة القادمة: ${getSmartDateLabel(nextSession.scheduledAt)}` : 'تُعلن حصتك القادمة حسب جدولك — تُحتسب بعد أول حضور لك'}
                 action={(liveNow || nextSession) && (
                   <HqActionLink to="/student/live" primary={liveNow}>
                     {liveNow ? 'انضم الآن' : 'صفحة الحصة'}
                   </HqActionLink>
                 )} />
 
-              {/* 7. Homework / Exams */}
-              <JourneyNode index={7} title="الواجبات والاختبارات" status={tasksKnown ? st('tasks') : 'upcoming'}
+              {/* 6. Exams */}
+              <JourneyNode index={6} title="الاختبارات" status={tasksKnown ? st('tasks') : 'upcoming'}
                 proof={!tasksKnown
                   ? 'جارٍ تحميل مهامك...'
-                  : ((pendingHomework || 0) + (pendingExams || 0)) > 0
-                  ? `${pendingHomework} واجبًا معلقًا · ${pendingExams} اختبارًا بانتظارك`
+                  : (pendingExams || 0) > 0
+                  ? `${pendingExams} اختبارًا بانتظارك`
                   : 'لا معلّق عليك الآن — أحسنت'}
-                action={tasksKnown && ((pendingHomework || 0) + (pendingExams || 0)) > 0 && (
+                action={tasksKnown && (pendingExams || 0) > 0 && (
                   <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {(pendingHomework || 0) > 0 && <HqActionLink to="/student/homework">الواجبات</HqActionLink>}
-                    {(pendingExams || 0) > 0 && <HqActionLink to="/student/exams" primary={pendingHomework === 0}>الاختبارات</HqActionLink>}
+                    <HqActionLink to="/student/exams">الاختبارات</HqActionLink>
                   </span>
                 )} />
 
-              {/* 8. Khatm — JuzMap lives ONLY here */}
-              <JourneyNode index={8} title="الختمة" status={st('khatm')}
+              {/* 7. Khatm — JuzMap lives ONLY here */}
+              <JourneyNode index={7} title="الختمة" status={st('khatm')}
                 proof={`${completedJuz.length} من 30 جزءًا`}>
                 <button type="button" onClick={() => setJuzOpen(o => !o)} aria-expanded={juzOpen}
                   style={{ minHeight: 48, padding: '0 20px', borderRadius: 12, border: `1px solid ${HQ.LINE}`, background: HQ.SURFACE, color: HQ.INK, fontWeight: 800, fontSize: 14, cursor: 'pointer', width: '100%' }}>
@@ -334,30 +271,10 @@ export default function ProgressPage() {
                   </div>
                 )}
               </JourneyNode>
-
-              {/* 9. Ijazah */}
-              <JourneyNode index={9} title="الإجازة" status={st('ijazah')}
-                proof={awarded
-                  ? 'مُنحت الإجازة بالسند — مبارك'
-                  : ijazah
-                    ? `أجزاء معتمدة للإجازة: ${(ijazah.completedJuz || []).length}/30 — تُمنح بعد إتمام 30 جزءاً والعرض على الشيخ`
-                    : 'تُمنح بعد إتمام الختمة (30/30) والعرض على الشيخ'}
-                action={awarded && (
-                  <button type="button" onClick={() => setIsCertificateOpen(true)} className="hq-action"
-                    style={{ background: HQ.GOLD, color: HQ.INK, padding: '0 24px', fontSize: 15, fontWeight: 800 }}>
-                    <Award size={17} /> عرض شهادة الإجازة
-                  </button>
-                )} />
             </div>
           </>
         )}
       </div>
-
-      <IjazahCertificateModal
-        isOpen={isCertificateOpen}
-        onClose={() => setIsCertificateOpen(false)}
-        ijazah={ijazah}
-      />
     </PageLayout>
   );
 }

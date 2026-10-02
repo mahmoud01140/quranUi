@@ -1,43 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Users, Calendar, Video, Bell, Plus, ChevronLeft, RotateCcw } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Video, Bell, Plus, ChevronLeft, RotateCcw, Radio } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import PageLayout from '../../components/shared/PageLayout';
 import useAuthStore from '../../store/authStore';
-import useGroupStore from '../../store/groupStore';
 import useNotifications from '../../hooks/useNotifications';
-import { getLevelLabel } from '../../utils/helpers';
-import { DAYS_AR } from '../../utils/constants';
+import { getLevelLabel, formatTime12Ar } from '../../utils/helpers';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import '../../components/halaqa/halaqa.css';
-import { HQ, HqBadge } from '../../components/halaqa/primitives';
+import { HQ, HqAvatar, HqBadge } from '../../components/halaqa/primitives';
 
-/* لوحة المعلم — who do I have today, what is on me, who needs follow-up.
-   Same fetches and links; operational, never an admin dashboard.
-   LiveBroadcastPage already speaks the majlis language — untouched here. */
-
-const LEVEL_TONE = {
-  foundation: 'mentor',
-  memorization: 'guide',
-  teacher_prep: 'guide',
-  senior: 'neutral',
-};
+/* لوحة المعلم — النظام فردي: قائمة الطلاب وبدء البث المباشر معهم. */
 
 export default function TeacherDashboard() {
   const { user } = useAuthStore();
-  const { groups, fetchAllGroups } = useGroupStore();
+  const navigate = useNavigate();
+  const [students, setStudents] = useState([]);
   const [todayStats, setTodayStats] = useState({ pendingReviews: 0, attendanceRate: '—' });
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [startingId, setStartingId] = useState(null);
   useNotifications();
 
   const loadAll = () => {
     setLoading(true);
     setLoadFailed(false);
-    if (user?.role === 'admin') {
-      fetchAllGroups();
-    } else {
-      fetchAllGroups({ teacher: user?._id });
-    }
+    api.get('/users/students/list').then(res => {
+      setStudents(res.data.students || []);
+    }).catch(() => {});
     fetchStats().finally(() => setLoading(false));
   };
 
@@ -61,10 +52,27 @@ export default function TeacherDashboard() {
     }
   };
 
-  const myGroups = (user?.role === 'admin' || user?.role === 'teacher')
-    ? groups
-    : groups.filter(g => g.teacher?._id === user?._id || g.teacher === user?._id);
-  const totalStudents = myGroups.reduce((sum, g) => sum + (g.students?.length || 0), 0);
+  const handleQuickStart = async (u) => {
+    setStartingId(u._id);
+    try {
+      const res = await api.post(`/live/student/${u._id}/start`, {});
+      toast.success(`انطلق البث مع ${u.firstName}`);
+      navigate('/admin/live', {
+        state: {
+          sessionId: res.data.session._id,
+          studentId: u._id,
+          studentName: `${u.firstName} ${u.lastName}`,
+          lessonId: res.data.lessonId,
+          lessonTitle: res.data.session.title,
+          isIndividual: true,
+        },
+      });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'خطأ في بدء البث');
+    } finally {
+      setStartingId(null);
+    }
+  };
 
   return (
     <PageLayout>
@@ -80,7 +88,7 @@ export default function TeacherDashboard() {
             <div className="hq-skeleton" style={{ height: 64, width: '100%', marginBottom: 12 }} />
             <div className="hq-skeleton" style={{ height: 64, width: '100%' }} />
           </div>
-        ) : loadFailed && myGroups.length === 0 ? (
+        ) : loadFailed ? (
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 40, textAlign: 'center' }} role="alert">
             <p style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 900, color: HQ.INK }}>تعذّر تحميل لوحتك</p>
             <p style={{ margin: '0 0 20px', fontSize: 14, color: HQ.MUTED }}>تحقق من الاتصال ثم حاول مرة أخرى.</p>
@@ -94,8 +102,7 @@ export default function TeacherDashboard() {
             <section aria-label="وضع اليوم"
               style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 16, marginBottom: 16 }}>
               <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', fontSize: 14, marginBottom: todayStats.pendingReviews > 0 ? 12 : 0 }}>
-                <span><strong style={{ color: HQ.INK, fontSize: 18 }}>{totalStudents}</strong> <span style={{ color: HQ.MUTED }}>طالبًا</span></span>
-                <span><strong style={{ color: HQ.INK, fontSize: 18 }}>{myGroups.length}</strong> <span style={{ color: HQ.MUTED }}>مجموعات</span></span>
+                <span><strong style={{ color: HQ.INK, fontSize: 18 }}>{students.length}</strong> <span style={{ color: HQ.MUTED }}>طالبًا</span></span>
                 <span><strong style={{ color: HQ.INK, fontSize: 18 }}>{todayStats.attendanceRate}</strong> <span style={{ color: HQ.MUTED }}>حضور</span></span>
               </div>
               {todayStats.pendingReviews > 0 && (
@@ -113,9 +120,9 @@ export default function TeacherDashboard() {
             {/* Primary actions */}
             <section aria-label="إجراءاتك" style={{ marginBottom: 16 }}>
               {[
-                { to: '/teacher/groups', icon: Video, title: 'مجموعاتي وبدء البث', hint: 'اختر المجموعة ثم الدرس للانطلاق', primary: true },
-                { to: '/teacher/review', icon: Bell, title: 'مركز المراجعة', hint: 'الواجبات والتسميعات بانتظار التصحيح' },
-                { to: '/teacher/create-exam', icon: Plus, title: 'نشاط أو اختبار جديد', hint: 'قيّم مجموعتك بتكليف جديد' },
+                { to: '/admin/live', icon: Video, title: 'الغرفة التفاعلية وبدء البث', hint: 'بدء الجلسة الفردية المباشرة مع الطالب', primary: true },
+                { to: '/teacher/review', icon: Bell, title: 'مركز المراجعة', hint: 'التسميعات والاختبارات بانتظار التصحيح' },
+                { to: '/teacher/create-exam', icon: Plus, title: 'نشاط أو اختبار جديد', hint: 'قيّم طلابك بتكليف جديد' },
               ].map(a => (
                 <Link key={a.to + a.title} to={a.to}
                   style={{
@@ -134,35 +141,37 @@ export default function TeacherDashboard() {
               ))}
             </section>
 
-            {/* Groups — rows, mobile-safe (no wide tables) */}
-            <section aria-label={`مجموعاتي (${myGroups.length})`}
+            {/* Students — individual system: start 1-on-1 live directly */}
+            <section aria-label={`طلابي (${students.length})`}
               style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 16 }}>
-              <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: HQ.INK, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Users size={18} color={HQ.MENTOR} /> مجموعاتي ({myGroups.length})
+              <h2 style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: HQ.INK }}>
+                طلابي ({students.length})
               </h2>
-              {myGroups.length === 0 ? (
-                <p style={{ fontSize: 14, color: HQ.MUTED, margin: '8px 0 0' }}>لا مجموعات مخصصة لك بعد — ستظهر هنا فور تعيينك.</p>
+              {students.length === 0 ? (
+                <p style={{ fontSize: 14, color: HQ.MUTED, margin: '8px 0 0' }}>لا يوجد طلاب بعد — سيظهر هنا الطلاب المسجلون.</p>
               ) : (
                 <ol style={{ listStyle: 'none', margin: '8px 0 0', padding: 0 }}>
-                  {myGroups.map((group) => (
-                    <li key={group._id} style={{ padding: '12px 0', borderTop: `1px solid ${HQ.LINE}` }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                        <strong style={{ fontSize: 16, color: HQ.INK }}>{group.name}</strong>
-                        <HqBadge tone={LEVEL_TONE[group.level] || 'neutral'}>{getLevelLabel(group.level)}</HqBadge>
-                        <span style={{ fontSize: 13, color: HQ.MUTED, marginRight: 'auto' }}>
-                          {group.students?.length || 0}/{group.maxStudents} طالب
-                        </span>
+                  {students.map((u) => (
+                    <li key={u._id} style={{ padding: '12px 0', borderTop: `1px solid ${HQ.LINE}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <HqAvatar firstName={u.firstName} lastName={u.lastName} size={40} />
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <strong style={{ fontSize: 15, color: HQ.INK }}>{u.firstName} {u.lastName}</strong>
+                            {u.assignedLevel && <HqBadge tone="mentor">{getLevelLabel(u.assignedLevel)}</HqBadge>}
+                          </div>
+                          {(u.scheduleDays?.length > 0 || u.sessionTime) && (
+                            <p style={{ margin: '2px 0 0', fontSize: 13, color: HQ.MUTED }}>
+                              {u.scheduleDays?.join('، ') || ''} {u.sessionTime ? `(الساعة ${formatTime12Ar(u.sessionTime)})` : ''}
+                            </p>
+                          )}
+                        </div>
+                        <button type="button" onClick={() => handleQuickStart(u)} disabled={startingId === u._id}
+                          className="hq-action"
+                          style={{ background: HQ.MENTOR, color: '#fff', padding: '0 16px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {startingId === u._id ? <LoadingSpinner size="sm" /> : <><Radio size={16} /> بدء بث</>}
+                        </button>
                       </div>
-                      {group.schedule?.slice(0, 2).length > 0 && (
-                        <p style={{ margin: '0 0 8px', fontSize: 13, color: HQ.MUTED, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Calendar size={14} />
-                          {group.schedule.slice(0, 2).map(s => `${DAYS_AR[s.dayOfWeek]} ${s.startTime}`).join(' · ')}
-                        </p>
-                      )}
-                      <Link to={`/admin/groups/${group._id}/curriculum`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 800, color: HQ.MENTOR, textDecoration: 'none', minHeight: 44 }}>
-                        <Video size={15} /> المنهج وبدء البث
-                      </Link>
                     </li>
                   ))}
                 </ol>

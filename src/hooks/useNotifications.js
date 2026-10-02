@@ -46,30 +46,16 @@ export default function useNotifications() {
       toast.success('نتيجة امتحانك جاهزة!');
     };
 
-    const handleGroupAssigned = ({ groupName }) => {
-      addNotification({
-        _id: `group-${Date.now()}`,
-        type: 'group_assigned',
-        title: '🎉 تم تعيينك في مجموعة',
-        body: `مرحباً بك في ${groupName}`,
-        sentAt: new Date(),
-        isRead: false,
-      });
-      toast.success(`تم تعيينك في ${groupName}`);
-    };
-
     socket.on('notification', handleNotification);
     socket.on('live-starting-soon', handleLiveStarting);
     socket.on('broadcast-started', handleLiveStarting);
     socket.on('result-ready', handleResultReady);
-    socket.on('group-assigned', handleGroupAssigned);
 
     return () => {
       socket.off('notification', handleNotification);
       socket.off('live-starting-soon', handleLiveStarting);
       socket.off('broadcast-started', handleLiveStarting);
       socket.off('result-ready', handleResultReady);
-      socket.off('group-assigned', handleGroupAssigned);
     };
   }, [addNotification]);
 }

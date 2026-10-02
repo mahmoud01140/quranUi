@@ -831,7 +831,7 @@ export default function AdminOnboardingSettingsPage() {
                           type="button"
                           onClick={() => addSurveyOption(sqi)}
                           className="text-xs font-bold flex items-center gap-1"
-                          style={{ minHeight: 40, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: 'none', border: 'none', color: HQ.MENTOR }}
+                          style={{ minHeight: 44, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: 'none', border: 'none', color: HQ.MENTOR }}
                         >
                           <Plus size={13} aria-hidden />
                           إضافة خيار
@@ -853,7 +853,7 @@ export default function AdminOnboardingSettingsPage() {
                             <button
                               type="button"
                               onClick={() => removeSurveyOption(sqi, oi)}
-                              style={{ ...iconBtn, minWidth: 40, minHeight: 40, color: '#C2410C' }}
+                              style={{ ...iconBtn, minWidth: 44, minHeight: 44, color: '#C2410C' }}
                               aria-label={`حذف الخيار ${oi + 1}`}
                             >
                               <Trash2 size={14} aria-hidden />

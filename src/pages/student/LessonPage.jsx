@@ -72,11 +72,19 @@ export default function LessonPage() {
   // Lesson steps tracker (logic unchanged)
   const { toggleStep, isStepDone, allDone } = useLessonProgress();
 
-  // Load lesson details and personal notes (endpoints unchanged)
+  // Load lesson details and personal notes
   useEffect(() => {
     const fetchPlanAndNotes = async () => {
       setIsLoading(true);
       try {
+        if (user?._id) {
+          const indRes = await api.get(`/study-plans/student/${user._id}/full`).catch(() => null);
+          if (indRes?.data?.plan?.customLessons?.some(l => l._id?.toString() === lessonId)) {
+            setStudyPlan(indRes.data.plan);
+            setIsLoading(false);
+            return;
+          }
+        }
         const groupId = user?.group?._id || user?.group;
         if (groupId) {
           const res = await api.get(`/study-plans/group/${groupId}/full`);
@@ -277,7 +285,7 @@ export default function LessonPage() {
   return shell(
     <>
       {/* Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div className="m-crumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
         <Link to="/student/curriculum" style={{ fontSize: 14, color: HQ.MENTOR, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
           <ArrowRight size={16} /> المنهج
         </Link>
@@ -311,7 +319,7 @@ export default function LessonPage() {
       </p>
 
       {/* Steps: the clear primary mechanism (exam is quiz-gated) */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }} role="group" aria-label="مراحل إكمال الدرس">
+      <div className="m-steps" style={{ display: 'flex', gap: 8, marginBottom: 20 }} role="group" aria-label="مراحل إكمال الدرس">
         {steps.map(s => {
           const done = isStepDone(lessonId, s.key);
           const Icon = s.icon;
@@ -348,7 +356,7 @@ export default function LessonPage() {
               }}>
                 {done ? <Check size={14} strokeWidth={3} /> : <Icon size={14} />}
               </span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: done ? HQ.MENTOR : HQ.MUTED, textAlign: 'center', lineHeight: 1.5 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: done ? HQ.MENTOR : HQ.MUTED, textAlign: 'center', lineHeight: 1.5 }}>
                 {s.label}
               </span>
             </button>

@@ -86,8 +86,8 @@ export default function QuranAudioPlayer({ audio, surahName, totalSurahVerses })
 
       {/* ── Progress bar ────────────────────────────────────── */}
       <div
-        className="relative cursor-pointer"
-        style={{ height: 6, background: HQ.LINE }}
+        className="relative cursor-pointer m-seek"
+        style={{ height: 6, background: HQ.LINE, padding: '9px 0', backgroundClip: 'content-box' }}
         onClick={handleProgressClick}
         role="slider" aria-label="تقدم التلاوة" aria-valuenow={Math.round(audioProgress)}
         aria-valuemin={0} aria-valuemax={100} tabIndex={0}
@@ -354,7 +354,7 @@ export default function QuranAudioPlayer({ audio, surahName, totalSurahVerses })
                           const v = Math.max(1, Math.min(+e.target.value, verseCount));
                           changeRepeatRange(v, Math.max(v, repeatRange.to));
                         }}
-                        className="text-center text-sm focus:border-[#177B58] focus:outline-none"
+                        className="text-center text-base focus:border-[#177B58] focus:outline-none"
                         style={{
                           width: 64, minHeight: 44, background: HQ.SURFACE, color: HQ.INK,
                           border: `1px solid ${HQ.LINE}`, borderRadius: 8, padding: '8px',
@@ -372,7 +372,7 @@ export default function QuranAudioPlayer({ audio, surahName, totalSurahVerses })
                           const v = Math.max(repeatRange.from, Math.min(+e.target.value, verseCount));
                           changeRepeatRange(repeatRange.from, v);
                         }}
-                        className="text-center text-sm focus:border-[#177B58] focus:outline-none"
+                        className="text-center text-base focus:border-[#177B58] focus:outline-none"
                         style={{
                           width: 64, minHeight: 44, background: HQ.SURFACE, color: HQ.INK,
                           border: `1px solid ${HQ.LINE}`, borderRadius: 8, padding: '8px',

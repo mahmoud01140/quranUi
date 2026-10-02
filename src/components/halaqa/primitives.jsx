@@ -9,6 +9,7 @@ const INK = '#2A2438';
 const MUTED = '#756E85';
 const LINE = '#E8E2D4';
 const MENTOR = '#177B58';
+const MENTOR_DEEP = '#0F5940';
 const MENTOR_WASH = '#E2EFE7';
 const GUIDE = '#4A3F6B';
 const GUIDE_WASH = '#ECE9F4';
@@ -16,8 +17,13 @@ const GOLD = '#D9A441';
 const GOLD_WASH = '#F8EDD3';
 const PAPER = '#FBF7EE';
 const SURFACE = '#FFFFFF';
+const WARNING = '#B45309';
+const WARNING_WASH = '#FEF3E2';
+const ERROR = '#C2410C';
+const ERROR_WASH = '#FDECEC';
+const INFO = '#3B5BFD';
 
-export const HQ = { INK, MUTED, LINE, MENTOR, GUIDE, GOLD, PAPER, SURFACE };
+export const HQ = { INK, MUTED, LINE, MENTOR, MENTOR_DEEP, MENTOR_WASH, GUIDE, GUIDE_WASH, GOLD, GOLD_WASH, PAPER, SURFACE, WARNING, WARNING_WASH, ERROR, ERROR_WASH, INFO };
 
 /* Avatar palette (halaqa only — shared helper untouched) */
 const AVATAR_COLORS = ['#177B58', '#4A3F6B', '#B45309', '#3B5BFD', '#C2410C', '#6D5BA7', '#0F5940'];

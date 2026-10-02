@@ -64,10 +64,10 @@ export default function NotificationBell() {
         navigate(`${rolePrefix}/exams`);
         break;
       case 'group_assigned':
-        navigate(role === 'teacher' ? '/teacher/groups' : '/student/curriculum?tab=group');
+        navigate(role === 'teacher' ? '/teacher' : '/student/curriculum');
         break;
       case 'plan_updated':
-        navigate(`${rolePrefix}/curriculum`);
+        navigate(role === 'teacher' ? '/teacher' : role === 'admin' ? '/admin/users' : '/student/curriculum');
         break;
       case 'message':
       case 'general':
@@ -133,7 +133,7 @@ export default function NotificationBell() {
                     قراءة الكل
                   </button>
                 )}
-                <button type="button" onClick={() => setIsOpen(false)} aria-label="إغلاق الإشعارات" style={{ ...iconBtn, minWidth: 40, minHeight: 40 }}>
+                <button type="button" onClick={() => setIsOpen(false)} aria-label="إغلاق الإشعارات" style={{ ...iconBtn, minWidth: 44, minHeight: 44 }}>
                   <X size={16} aria-hidden />
                 </button>
               </div>

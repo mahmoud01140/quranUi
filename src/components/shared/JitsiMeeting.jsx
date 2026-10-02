@@ -5,13 +5,9 @@ import { AlertTriangle } from 'lucide-react';
  * JitsiMeeting Component
  * Embeds a Jitsi Meet video conference inside the React application using the Jitsi External API.
  *
- * Optimizations for Quran Learning Platform:
- * 1. Students join audio-muted by default
- * 2. Auto-pin reciting student via onApiReady (exposes pinParticipantByName)
- * 3. Noise suppression enabled by default for clear recitation
- * 4. Students join video-off but may enable their camera freely (camera button
- *    always visible); the broadcaster can mute everyone's video except one
- *    via the exposed muteAllVideoExcept helper (moderator-only).
+ * - Students join audio-muted by default
+ * - Noise suppression enabled by default for clear recitation
+ * - Students join video-off but may enable their camera freely
  */
 export default function JitsiMeeting({
   roomName,
@@ -30,8 +26,6 @@ export default function JitsiMeeting({
   const containerRef = useRef(null);
   const jitsiApiRef = useRef(null);
   const isDisposingRef = useRef(false);
-  const videoMutedRef = useRef(true);
-  const isModeratorRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -180,7 +174,7 @@ export default function JitsiMeeting({
         const api = new window.JitsiMeetExternalAPI(domain, options);
         jitsiApiRef.current = api;
 
-        // تحسين 2: تجهيز خريطة المشاركين لتثبيت الطالب المُسمّع تلقائياً
+        // Focus mode: keep the moderator pinned on the student stage
         const participantsMap = new Map(); // displayName -> jitsiParticipantId
 
         api.addEventListener('participantJoined', (participant) => {
@@ -204,84 +198,8 @@ export default function JitsiMeeting({
           }
         });
 
-        // تتبع حالة الكاميرا المحلية + دور المشرف (لأدوات البث)
-        api.addEventListener('videoMuteStatusChanged', ({ muted }) => {
-          videoMutedRef.current = muted;
-        });
-        api.addEventListener('participantRoleChanged', ({ role }) => {
-          isModeratorRef.current = role === 'moderator';
-        });
-
-        // Expose enhanced API with helper methods
+        // Expose plain Jitsi API (no recitation/camera helpers)
         if (onApiReady) {
-          // دالة تثبيت طالب بالاسم — تُستخدم من طابور التسميع
-          api.pinParticipantByName = (name) => {
-            let participantId = participantsMap.get(name);
-            if (!participantId) {
-              for (const [pName, pId] of participantsMap.entries()) {
-                if (pName.includes(name) || name.includes(pName)) {
-                  participantId = pId;
-                  break;
-                }
-              }
-            }
-            if (participantId) {
-              api.pinParticipant(participantId);
-              return true;
-            }
-            return false;
-          };
-
-          // دالة إلغاء التثبيت
-          api.unpinAll = () => {
-            api.pinParticipant(null);
-          };
-
-          // دالة لكتم مايك طالب معين (للمعلم فقط)
-          api.muteParticipantByName = (name) => {
-            let participantId = participantsMap.get(name);
-            if (!participantId) {
-              for (const [pName, pId] of participantsMap.entries()) {
-                if (pName.includes(name) || name.includes(pName)) {
-                  participantId = pId;
-                  break;
-                }
-              }
-            }
-            if (participantId) {
-              api.executeCommand('muteEveryone', participantId);
-              return true;
-            }
-            return false;
-          };
-
-          // حالة الكاميرا المحلية (للتفعيل التلقائي عند دور التسميع)
-          api.getVideoMutedState = () => videoMutedRef.current;
-
-          // هل أنا مشرف الغرفة؟ (أوامر الكتم الجماعي للمشرف فقط)
-          api.isModerator = () => isModeratorRef.current;
-
-          // أسماء الحاضرين المعروفين (لقائمة الاستثناء)
-          api.getParticipantNames = () => [...participantsMap.keys()];
-
-          const matchesName = (pName, name) =>
-            pName === name || pName.includes(name) || name.includes(pName);
-
-          // كتم كاميرات الجميع ما عدا المستثنى — لا يخرج أحد ولا يعيد التحميل.
-          // يعيد { muted } بعدد من تم كتمهم، ويتجاهل صاحب البث نفسه.
-          api.muteAllVideoExcept = (exceptionName) => {
-            let muted = 0;
-            for (const [pName, pId] of participantsMap.entries()) {
-              if (matchesName(pName, displayName)) continue; // أنا (الباث)
-              if (exceptionName && matchesName(pName, exceptionName)) continue; // المستثنى
-              try {
-                api.executeCommand('muteRemoteParticipant', pId, 'video');
-                muted++;
-              } catch (_) {}
-            }
-            return { muted };
-          };
-
           onApiReady(api);
         }
 

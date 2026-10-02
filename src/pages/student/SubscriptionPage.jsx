@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import PageLayout from '../../components/shared/PageLayout';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import api from '../../services/api';
-import { formatDateAr } from '../../utils/helpers';
+import { formatDateAr, formatTime12Ar } from '../../utils/helpers';
 import useAuthStore from '../../store/authStore';
 import Pagination from '../../components/shared/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -24,7 +24,7 @@ const FALLBACK_FEATURES = [
   'خطة متابعة الحفظ والختم ومراجعة المتشابهات',
   'مراجعة وتصحيح التلاوات والتسميع الصوتي المباشر',
   'الوصول للتسجيلات ومكتبة الشروحات كاملة',
-  'حل الواجبات اليومية وبنك الاختبارات والتقييمات',
+  'بنك الاختبارات والتقييمات المستمرة',
   'شهادة إتمام معتمدة وموثقة عند إنهاء المنهج الدراسي',
 ];
 
@@ -102,13 +102,8 @@ export default function SubscriptionPage() {
     setTimeout(() => setCopiedKey(''), 2500);
   };
 
-  const hasGroup = Boolean(user?.group?._id || user?.group);
-
+  // النظام فردي: لا مجموعات — السداد متاح لكل طالب معتمد
   const handleOpenCheckout = () => {
-    if (!hasGroup) {
-      toast.error('لا يمكن سداد الاشتراك إلا بعد تسكينك في إحدى المجموعات');
-      return;
-    }
     setSenderPhone(user?.phone || '');
     setSenderName(`${user?.firstName || ''} ${user?.lastName || ''}`.trim());
     setReferenceNumber('');
@@ -118,15 +113,18 @@ export default function SubscriptionPage() {
     setCheckoutModalOpen(true);
   };
 
+  // حدود مطابقة للخادم تماماً: 10MB وأنواع jpeg/png/webp/pdf فقط
+  const ACCEPTED_RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-      toast.error('يرجى اختيار صورة إيصال صحيحة (JPG, PNG, WebP) أو ملف PDF');
+    if (!ACCEPTED_RECEIPT_TYPES.includes(file.type)) {
+      toast.error('يرجى اختيار إيصال بصيغة JPG أو PNG أو WebP أو PDF');
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('حجم الملف كبير جداً، الحد الأقصى 15 ميغابايت');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('حجم الملف كبير جداً، الحد الأقصى 10 ميغابايت');
       return;
     }
     setReceiptFile(file);
@@ -173,7 +171,7 @@ export default function SubscriptionPage() {
     ? selectedMethod
     : (availableMethods[0] || selectedMethod);
   const displayAmount = calculateAmount(planConfig, billingCycle, currency);
-  const canCheckout = displayAmount != null && !noMethodsConfigured && hasGroup;
+  const canCheckout = displayAmount != null && !noMethodsConfigured;
 
   const handleSubmitPayment = async (e) => {
     e.preventDefault();
@@ -226,33 +224,33 @@ export default function SubscriptionPage() {
   const isExpiringSoon = subscription?.isExpiringSoon;
   const isExpired = subscription?.isExpired;
   const pendingPayment = payments.find(p => p.status === 'pending');
+  const hasPending = Boolean(pendingPayment);
   const trialUsed = (subscription?.trialSessionsAttended || 0) >= (subscription?.trialSessionsAllowed || 1);
   const currencyLabel = currency === 'EGP' ? 'ج.م' : 'ر.س';
 
-  const statusTitle = !hasGroup
-    ? 'بانتظار تسكينك في مجموعة لتفعيل الاشتراك'
-    : !subscription
+  // المنتهي مدفوعاً يُعرض أولاً قبل فرع التجربة
+  const statusTitle = !subscription
     ? 'ابدأ بحصتك التجريبية'
     : isPaidActive
     ? 'اشتراكك مفعل وسارٍ'
+    : isExpired
+    ? 'الاشتراك منتهي'
     : isTrial && !trialUsed
     ? 'محاضرتك التجريبية متاحة'
-    : trialUsed && !isPaidActive
-    ? 'انتهت التجريبية — الاشتراك مطلوب'
-    : 'الاشتراك منتهي';
-  const statusHint = !hasGroup
-    ? 'تشترط الأكاديمية تسكينك أولاً في حلقة تناسب مستواك ومواعيدك لتتعرف على معلمك وجدولك وتجرب حصتك الأولى مجاناً. فور تسكينك، ستتمكن من سداد الاشتراك.'
-    : !subscription
-    ? 'احضر أول جلسة مباشرة مجاناً لتجربة الحلقة، ثم سدد الاشتراك لفتح كامل المحتوى.'
+    : 'الاشتراك مطلوب';
+  const statusHint = !subscription
+    ? 'احضر أول جلسة مباشرة مجاناً لتجربة الحصة مع معلمك، ثم سدد الاشتراك لفتح كامل المحتوى.'
     : isPaidActive && subscription?.endDate
     ? `ينتهي في ${formatDateAr(subscription.endDate)} (متبقي ${subscription.daysRemaining} يوم)`
+    : isExpired
+    ? 'انتهى اشتراكك — المحتوى محجوب بالكامل حتى السداد. تُراجَع الإيصالات خلال 24 ساعة ولا يُفتح المحتوى أثناء المراجعة.'
     : isTrial && !trialUsed
-    ? 'يمكنك حضور أول جلسة مباشرة مجانًا لتجربة الحلقة.'
-    : 'انتهى اشتراكك — المحتوى محجوب بالكامل حتى السداد. تُراجَع الإيصالات خلال 24 ساعة ولا يُفتح المحتوى أثناء المراجعة.';
+    ? 'يمكنك حضور أول جلسة مباشرة مجانًا لتجربة الحصة.'
+    : 'سدد اشتراكك لفتح كامل المحتوى ومواصلة الحصص مع المعلم.';
 
   const inputStyle = {
     width: '100%', padding: '12px 14px', borderRadius: 12, border: `1px solid ${HQ.LINE}`,
-    background: HQ.SURFACE, fontSize: 14, color: HQ.INK, fontFamily: 'inherit', minHeight: 48,
+    background: HQ.SURFACE, fontSize: 16, color: HQ.INK, fontFamily: 'inherit', minHeight: 48,
   };
   const labelStyle = { display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 };
 
@@ -292,10 +290,10 @@ export default function SubscriptionPage() {
               {pendingPayment && (
                 <p role="status" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: '#B45309' }}>
                   <Clock size={16} />
-                  طلبك قيد المراجعة — سيُفتح المحتوى بعد اعتماد الإدارة خلال 24 ساعة.
+                  طلبك قيد المراجعة{pendingPayment?._id ? ` (رقم الطلب: ${String(pendingPayment._id).slice(-6).toUpperCase()})` : ''} — سيُفتح المحتوى بعد اعتماد الإدارة خلال 24 ساعة.
                 </p>
               )}
-              {hasGroup && (isExpiringSoon || isExpired) && (
+              {(isExpiringSoon || isExpired) && (
                 <p role={isExpired ? 'alert' : 'status'} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 12px', fontSize: 14, fontWeight: 800, color: isExpired ? '#C2410C' : '#B45309' }}>
                   {isExpired ? <Lock size={16} /> : <AlertCircle size={16} />}
                   {isExpired ? 'انتهى اشتراكك — المحتوى محجوب بالكامل حتى السداد' : `يتبقى ${subscription?.daysRemaining} أيام على اشتراكك`}
@@ -305,37 +303,23 @@ export default function SubscriptionPage() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: HQ.INK }}>{statusTitle}</h2>
-                    <HqBadge tone={!hasGroup ? 'neutral' : isPaidActive ? 'mentor' : isTrial && !trialUsed ? 'gold' : 'neutral'}>
-                      {!hasGroup ? 'بانتظار التسكين' : isPaidActive ? 'نشط' : isTrial && !trialUsed ? 'تجريبي' : 'مطلوب السداد'}
+                    <HqBadge tone={isPaidActive ? 'mentor' : isTrial && !trialUsed ? 'gold' : 'neutral'}>
+                      {isPaidActive ? 'نشط' : isTrial && !trialUsed ? 'تجريبي' : 'مطلوب السداد'}
                     </HqBadge>
                   </div>
                   <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED, lineHeight: 1.6 }}>{statusHint}</p>
 
-                  {/* Actions for unplaced students */}
-                  {!hasGroup && (
-                    <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-                      <Link to="/waiting-approval" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 800, color: HQ.MENTOR, background: '#E2EFE7', padding: '8px 14px', borderRadius: 10, textDecoration: 'none' }}>
-                        <Clock size={15} /> متابعة حالة التسكين اللحظية
-                      </Link>
-                      <Link to="/student/quran" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: HQ.INK, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, padding: '8px 14px', borderRadius: 10, textDecoration: 'none' }}>
-                        <BookOpen size={15} /> تصفح المصحف المكرر
-                      </Link>
-                    </div>
-                  )}
-
-                  {/* Placed student group indicator */}
-                  {hasGroup && (
+                  {/* مواعيد الحصص المعتمدة */}
+                  {(user?.scheduleDays?.length > 0 || user?.sessionTime) && (
                     <p style={{ margin: '10px 0 0', fontSize: 13, color: HQ.MENTOR, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <CheckCircle2 size={15} /> مجموعتك المعتمدة: {user?.group?.name || 'مجموعتك القرآنية'}
+                      <CheckCircle2 size={15} /> مواعيد حصصك: {user?.scheduleDays?.join('، ') || ''} {user?.sessionTime ? `(الساعة ${formatTime12Ar(user.sessionTime)})` : ''}
                     </p>
                   )}
                 </div>
-                {hasGroup && (
-                  <button type="button" onClick={handleOpenCheckout} disabled={!canCheckout} className="hq-action"
-                    style={{ background: HQ.MENTOR, color: '#fff', padding: '0 24px', fontSize: 15, flex: 'none', opacity: canCheckout ? 1 : 0.5 }}>
-                    <CreditCard size={17} /> {isPaidActive ? 'تجديد مقدمًا' : 'اشترك الآن'}
-                  </button>
-                )}
+                <button type="button" onClick={handleOpenCheckout} disabled={!canCheckout || hasPending} className="hq-action"
+                  style={{ background: hasPending ? HQ.PAPER : HQ.MENTOR, color: hasPending ? HQ.MUTED : '#fff', border: hasPending ? `1px solid ${HQ.LINE}` : 'none', padding: '0 24px', fontSize: 15, flex: 'none', opacity: (canCheckout && !hasPending) ? 1 : 0.7 }}>
+                  {hasPending ? <><Clock size={17} /> طلبك قيد المراجعة ⏳</> : <><CreditCard size={17} /> {isPaidActive ? 'تجديد مقدمًا' : 'اشترك الآن'}</>}
+                </button>
               </div>
             </section>
 
@@ -401,29 +385,11 @@ export default function SubscriptionPage() {
                 </p>
               )}
 
-              {/* Action Button: Disabled with explanation if unplaced, active if placed */}
-              {!hasGroup ? (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ background: '#FBF7EE', border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '12px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Lock size={18} color="#B45309" style={{ flex: 'none' }} />
-                    <span style={{ fontSize: 13, color: HQ.INK, lineHeight: 1.5 }}>
-                      <strong>لا يمكن سداد الاشتراك قبل التسكين:</strong> سيتم فتح إمكانية السداد فور تسكينك في مجموعتك لتجربة حصتك الأولى المجانية.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toast('يرجى الانتظار حتى يتم تسكينك في إحدى المجموعات أولاً لتفعيل الاشتراك', { icon: '⏳' })}
-                    className="hq-action"
-                    style={{ width: '100%', background: '#E8E2D4', color: '#756E85', fontSize: 15, cursor: 'not-allowed' }}>
-                    <Lock size={17} /> بانتظار تسكينك في مجموعة لتفعيل الاشتراك
-                  </button>
-                </div>
-              ) : (
-                <button type="button" onClick={handleOpenCheckout} disabled={!canCheckout} className="hq-action"
-                  style={{ width: '100%', background: HQ.MENTOR, color: '#fff', fontSize: 16, opacity: canCheckout ? 1 : 0.5 }}>
-                  <CreditCard size={18} /> {isPaidActive ? 'تجديد الاشتراك' : 'اشترك وسدد الآن'}
-                </button>
-              )}
+              {/* Action Button — waiting state while a request is under review */}
+              <button type="button" onClick={handleOpenCheckout} disabled={!canCheckout || hasPending} className="hq-action"
+                style={{ width: '100%', background: hasPending ? HQ.PAPER : HQ.MENTOR, color: hasPending ? HQ.MUTED : '#fff', border: hasPending ? `1px solid ${HQ.LINE}` : 'none', fontSize: 16, opacity: (canCheckout && !hasPending) ? 1 : 0.7 }}>
+                {hasPending ? <><Clock size={18} /> طلبك قيد المراجعة — سيُفتح المحتوى بعد الاعتماد</> : <><CreditCard size={18} /> {isPaidActive ? 'تجديد الاشتراك' : 'اشترك وسدد الآن'}</>}
+              </button>
             </section>
 
             {/* 3. Payment history — rows, never a wide table */}
@@ -530,7 +496,7 @@ export default function SubscriptionPage() {
                   طرق الدفع غير متاحة حالياً من الإدارة — لا يمكن إتمام السداد الآن.
                 </p>
               ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
+              <div className="m-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
                 {[
                   ...(vodaEnabled ? [{ key: 'vodafone_cash', label: 'فودافون كاش', hint: 'محافظ إلكترونية', icon: Smartphone }] : []),
                   ...(instaEnabled ? [{ key: 'instapay', label: 'انستاباي', hint: 'تحويل بنكي لحظي', icon: Building2 }] : []),
@@ -605,7 +571,7 @@ export default function SubscriptionPage() {
                   onChange={(e) => setSenderName(e.target.value)}
                   placeholder="الاسم الذي تم التحويل منه" style={inputStyle} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className="m-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label style={labelStyle} htmlFor="sub-sender-phone">
                     {effectiveMethod === 'vodafone_cash' ? 'رقم المحفظة المحول منها *' : 'هاتفك أو حساب انستاباي *'}
@@ -638,7 +604,7 @@ export default function SubscriptionPage() {
                     <label style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                       <Upload size={20} color={HQ.MENTOR} />
                       <strong style={{ fontSize: 14, color: HQ.INK }}>ارفع صورة الإيصال</strong>
-                      <span style={{ fontSize: 12, color: HQ.MUTED }}>PNG أو JPG أو PDF حتى 15 ميغابايت</span>
+                      <span style={{ fontSize: 12, color: HQ.MUTED }}>PNG أو JPG أو PDF حتى 10 ميغابايت</span>
                       <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} style={{ display: 'none' }} />
                     </label>
                   )}

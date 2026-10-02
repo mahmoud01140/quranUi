@@ -1,22 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  BookOpen, Video, Clock, Check, AlertTriangle, Lock, CreditCard,
-  Play, ChevronLeft, ChevronDown, ChevronUp, RotateCcw, Sparkles,
-  Mic, Square, Trash2, Send, CheckCircle, FileText, CheckCircle2,
-  Volume2, Award, CalendarCheck, HelpCircle, Layers,
+  BookOpen, Check, Play, ChevronLeft, RotateCcw, Sparkles,
+  CheckCircle, FileText, Award, CalendarCheck,
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '../../components/shared/PageLayout';
 import useAuthStore from '../../store/authStore';
-import useGroupStore from '../../store/groupStore';
+
 import useLiveStore from '../../store/liveStore';
 import useExamStore from '../../store/examStore';
-import useDailyRecordStore from '../../store/dailyRecordStore';
 import {
-  getLevelLabel, formatDateAr, getSmartDateLabel,
-  NO_GROUP_TITLE, NO_GROUP_HINT,
+  getLevelLabel, formatDateAr, getSmartDateLabel, formatTime12Ar,
 } from '../../utils/helpers';
 import api from '../../services/api';
+import useSocket from '../../hooks/useSocket';
 import toast from 'react-hot-toast';
 import '../../components/halaqa/halaqa.css';
 import { HQ, HqBadge } from '../../components/halaqa/primitives';
@@ -61,50 +58,38 @@ export default function StudentDashboard() {
   const activeTab = searchParams.get('tab') || 'all';
 
   const { user } = useAuthStore();
-  const { group, studyPlan, fetchMyGroup, fetchStudyPlan } = useGroupStore();
   const { sessions, fetchSessions } = useLiveStore();
   const { availableExams, results, fetchAvailableExams, fetchMyResults } = useExamStore();
-  const { records: weeklyRecords, fetchMyRecords } = useDailyRecordStore();
 
   const [dailyTask, setDailyTask] = useState(null);
-  const [homeworkSessions, setHomeworkSessions] = useState([]);
   const [subscription, setSubscription] = useState(null);
+  const [activeLiveSession, setActiveLiveSession] = useState(null);
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
-  // Homework submission & audio recorder states
-  const [expandedHomework, setExpandedHomework] = useState(null);
-  const [homeworkNotes, setHomeworkNotes] = useState({});
-  const [isSubmittingHw, setIsSubmittingHw] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioBlob, setAudioBlob] = useState(null);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const recordingTimerRef = useRef(null);
 
-  // Quran verses preview for homework
-  const [quranVerses, setQuranVerses] = useState({});
-  const [loadingVerses, setLoadingVerses] = useState({});
-
-  const groupId = user?.group?._id || user?.group;
   const myId = user?._id?.toString();
+  const loadingRef = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (groupId) {
-      fetchMyGroup(groupId);
-      fetchStudyPlan(groupId);
-      fetchSessions(groupId);
-    }
-  }, [user?.group]);
+  useSocket({
+    'live-started': () => {
+      api.get('/live/active/me').then(res => {
+        if (res.data?.session) setActiveLiveSession(res.data.session);
+      }).catch(() => {});
+    },
+    'broadcast-started': () => {
+      api.get('/live/active/me').then(res => {
+        if (res.data?.session) setActiveLiveSession(res.data.session);
+      }).catch(() => {});
+    },
+    'broadcast-ended': () => {
+      setActiveLiveSession(null);
+    },
+  });
 
   const loadLocal = () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setReady(false);
     setLoadFailed(false);
     let ok = 0;
@@ -115,16 +100,16 @@ export default function StudentDashboard() {
         setDailyTask(res.data.task || null);
       }),
       settle(async () => {
-        await fetchAvailableExams(groupId, myId);
+        const res = await api.get('/live/active/me').catch(() => null);
+        if (res?.data?.session) {
+          setActiveLiveSession(res.data.session);
+        } else {
+          setActiveLiveSession(null);
+        }
+      }),
+      settle(async () => {
+        await fetchAvailableExams(null, myId);
         await fetchMyResults(myId);
-      }),
-      settle(async () => {
-        await fetchMyRecords({ week: 'current' });
-      }),
-      settle(async () => {
-        if (!groupId || !myId) { setHomeworkSessions([]); return; }
-        const res = await api.get(`/live/group/${groupId}/homework`);
-        setHomeworkSessions(res.data.sessions || []);
       }),
       settle(async () => {
         const res = await api.get('/payments/my-history');
@@ -133,10 +118,23 @@ export default function StudentDashboard() {
     ]).then(() => {
       if (ok === 0) setLoadFailed(true);
       setReady(true);
+      loadingRef.current = false;
     });
   };
 
-  useEffect(() => { loadLocal(); }, [groupId, myId]);
+  useEffect(() => {
+    loadLocal();
+    const interval = setInterval(() => {
+      api.get('/live/active/me').then(res => {
+        if (res.data?.session) {
+          setActiveLiveSession(res.data.session);
+        } else {
+          setActiveLiveSession(null);
+        }
+      }).catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [myId]);
 
   const handleTabChange = (key) => {
     setSearchParams(key === 'all' ? {} : { tab: key });
@@ -155,155 +153,43 @@ export default function StudentDashboard() {
     }
   };
 
-  // Fetch Quran verses for homework recitation preview
-  const fetchVerses = async (sessionId, surahNum, from, to) => {
-    if (quranVerses[sessionId] || !surahNum) return;
-    setLoadingVerses(p => ({ ...p, [sessionId]: true }));
-    try {
-      const res = await fetch(`https://api.alquran.cloud/v1/surah/${surahNum}`);
-      const data = await res.json();
-      if (data.code === 200 && data.data?.ayahs) {
-        const filtered = data.data.ayahs.filter(
-          a => a.numberInSurah >= from && a.numberInSurah <= to
-        );
-        setQuranVerses(p => ({ ...p, [sessionId]: filtered }));
-      }
-    } catch (_) {}
-    finally {
-      setLoadingVerses(p => ({ ...p, [sessionId]: false }));
-    }
-  };
-
-  const toggleExpandHomework = (sess) => {
-    if (expandedHomework === sess._id) {
-      setExpandedHomework(null);
-    } else {
-      setExpandedHomework(sess._id);
-      if (sess.quranHomework?.surahNumber) {
-        fetchVerses(
-          sess._id,
-          sess.quranHomework.surahNumber,
-          sess.quranHomework.fromVerse,
-          sess.quranHomework.toVerse
-        );
-      }
-    }
-  };
-
-  const startHwRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        setAudioUrl(URL.createObjectURL(blob));
-        stream.getTracks().forEach(track => track.stop());
-      };
-      recorder.start();
-      setMediaRecorder(recorder);
-      setIsRecording(true);
-      setRecordingSeconds(0);
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds(s => s + 1);
-      }, 1000);
-    } catch {
-      toast.error('يرجى السماح بصلاحية الميكروفون لتسجيل التلاوة');
-    }
-  };
-
-  const stopHwRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    }
-  };
-
-  const deleteHwRecording = () => {
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setRecordingSeconds(0);
-  };
-
-  const handleSubmitHomework = async (sessionId) => {
-    if (!audioBlob && !homeworkNotes[sessionId]?.trim()) {
-      toast.error('يرجى تسجيل التلاوة الصوتية أو كتابة ملاحظات الواجب قبل التسليم');
-      return;
-    }
-    setIsSubmittingHw(true);
-    try {
-      const formData = new FormData();
-      formData.append('notes', homeworkNotes[sessionId] || '');
-      if (audioBlob) {
-        formData.append('audio', audioBlob, 'recitation.webm');
-      }
-      await api.post(`/live/${sessionId}/homework/submit`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      toast.success('تم تسليم الواجب بنجاح! سيراجعه معلمك.');
-      deleteHwRecording();
-      setExpandedHomework(null);
-      // Refresh homework list
-      const res = await api.get(`/live/group/${groupId}/homework`);
-      setHomeworkSessions(res.data.sessions || []);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'حدث خطأ في تسليم الواجب');
-    } finally {
-      setIsSubmittingHw(false);
-    }
-  };
-
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'صباح الخير' : hour < 18 ? 'مساء الخير' : 'مساء النور';
 
-  const liveSession = sessions.find(s => s.status === 'live');
+  const liveSession = activeLiveSession || sessions.find(s => s.status === 'live');
   const upcomingSession = liveSession || sessions.find(s => s.status === 'scheduled');
   const timeLeft = useCountdown(upcomingSession?.status === 'scheduled' ? upcomingSession.scheduledAt : null);
+  // Format seconds as countdown text
+  const formatCountdownAr = (secs) => {
+    if (!secs || secs <= 0) return '';
+    const d = Math.floor(secs / 86400);
+    const h = Math.floor((secs % 86400) / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (d > 0) return `متبقٍ ${d} يوم و${h} ساعة`;
+    if (h > 0) return `متبقٍ ${h} ساعة و${m} دقيقة`;
+    return `متبقٍ ${m} دقيقة`;
+  };
+  const timeLeftText = formatCountdownAr(timeLeft);
 
   const pendingPortions = PORTIONS.filter(p => dailyTask?.[p.key] && dailyTask[p.key].status !== 'completed');
-
-  // Pending homework sessions
-  const pendingHwList = homeworkSessions.filter(s => {
-    if (!s.homework && !s.quranHomework) return false;
-    const subs = s.homeworkSubmissions || [];
-    return !subs.some(sub => ((sub.student?._id || sub.student)?.toString()) === myId);
-  });
 
   // Pending exams
   const pendingExams = (availableExams || []).filter(e => !e.isCompleted);
 
   // Total pending tasks count for badges
-  const totalPendingCount = pendingPortions.length + pendingHwList.length + pendingExams.length;
-
-  const getMySubmission = (sess) => {
-    return sess.homeworkSubmissions?.find(
-      sub => ((sub.student?._id || sub.student)?.toString()) === myId
-    );
-  };
-
-  // Format seconds as mm:ss
-  const formatTime = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+  const totalPendingCount = pendingPortions.length + pendingExams.length;
 
   /* Ordered primary candidate */
   const candidates = [];
-  if (!groupId) {
-    candidates.push({ kind: 'quran', label: 'تصفح المصحف المكرر', hint: 'بانتظار تسكينك في مجموعتك', to: '/student/quran' });
-  } else {
-    if (liveSession) candidates.push({ kind: 'live', label: 'انضم للحصة المباشرة الآن', hint: liveSession.title, to: '/student/live', live: true });
-    if (pendingExams[0]) candidates.push({ kind: 'exam', label: `ابدأ: ${pendingExams[0].title}`, hint: `${pendingExams[0].questions?.length || 0} أسئلة`, examId: pendingExams[0]._id });
-    if (pendingHwList.length > 0) candidates.push({ kind: 'homework', label: `سلّم واجبك (${pendingHwList.length} معلق)`, hint: 'واجب تلاوة بانتظار تسليمك', tab: 'homework' });
-    if (pendingPortions.length) candidates.push({ kind: 'wird', label: `أكمل وردك اليومي (${pendingPortions.length} متبقٍ)`, hint: portionName(dailyTask[pendingPortions[0].key]), tab: 'wird' });
-    if (upcomingSession && upcomingSession.status === 'scheduled') candidates.push({ kind: 'upcoming', label: 'الحصة القادمة', hint: getSmartDateLabel(upcomingSession.scheduledAt), to: '/student/live' });
-    candidates.push({ kind: 'curriculum', label: 'تابع منهجك', hint: 'دروسك ومواد مجموعتك', to: '/student/curriculum' });
+  if (liveSession) {
+    candidates.push({ kind: 'live', label: 'انضم للحصة المباشرة الآن', hint: liveSession.title || 'جلسة بث مباشر خاصة مع المعلم', to: '/student/live', live: true });
+  }
+  if (pendingExams[0]) candidates.push({ kind: 'exam', label: `ابدأ: ${pendingExams[0].title}`, hint: `${pendingExams[0].questions?.length || 0} أسئلة`, examId: pendingExams[0]._id });
+  if (pendingPortions.length) candidates.push({ kind: 'wird', label: `أكمل وردك اليومي (${pendingPortions.length} متبقٍ)`, hint: portionName(dailyTask[pendingPortions[0].key]), tab: 'wird' });
+  if (upcomingSession && upcomingSession.status === 'scheduled') candidates.push({ kind: 'upcoming', label: 'الحصة القادمة', hint: `${getSmartDateLabel(upcomingSession.scheduledAt)}${timeLeftText ? ` · ${timeLeftText}` : ''}`, to: '/student/live' });
+  candidates.push({ kind: 'curriculum', label: 'تابع منهجك', hint: 'دروسك ومقررك الدراسي', to: '/student/curriculum' });
+  if (!liveSession && !pendingExams.length && !pendingPortions.length) {
+    candidates.push({ kind: 'quran', label: 'تصفح المصحف المكرر', hint: 'راجع وردك وتلاوتك', to: '/student/quran' });
   }
   const [primary, next] = candidates;
 
@@ -319,13 +205,12 @@ export default function StudentDashboard() {
     <HqActionLink to={primary.to}>{primary.label}</HqActionLink>
   ) : null;
 
-  const sheet = { background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 'clamp(16px, 3vw, 28px)' };
+  const sheet = { background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 'clamp(16px, 3vw, 28px)' };
   const h2 = { margin: '0 0 4px', fontSize: 18, fontWeight: 800, color: HQ.INK };
 
   const tabsConfig = [
     { key: 'all', label: 'الكل', count: totalPendingCount },
     { key: 'wird', label: 'الورد اليومي', count: pendingPortions.length },
-    { key: 'homework', label: 'الواجبات الصوتية', count: pendingHwList.length },
     { key: 'exams', label: 'الاختبارات والتقييمات', count: pendingExams.length },
   ];
 
@@ -353,46 +238,73 @@ export default function StudentDashboard() {
             {/* Header Greeting */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
               <div>
-                <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED }}>{greeting}،</p>
-                <h1 style={{ margin: '2px 0 0', fontSize: 28, fontWeight: 900, color: HQ.INK }}>
-                  {user?.firstName || 'طالبنا'}، المطلوب منك اليوم
+                <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED }}>{greeting} يا {user?.firstName || 'طالبنا'}</p>
+                <h1 className="m-dash-title" style={{ margin: '2px 0 0', fontSize: 28, fontWeight: 900, color: HQ.INK }}>
+                  المطلوب منك اليوم
                 </h1>
               </div>
               <button
                 type="button"
                 onClick={loadLocal}
                 title="تحديث المهام"
+                aria-label="تحديث المهام"
                 className="hq-action"
                 style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13, flex: 'none' }}
               >
-                <RotateCcw size={15} /> تحديث
+                <RotateCcw size={15} /> <span className="m-hide-sm">تحديث</span>
               </button>
             </div>
 
-            {/* Unplaced Student Reassurance Card */}
-            {!groupId && (
-              <div style={{ background: HQ.SURFACE, border: `1.5px solid ${HQ.LINE}`, borderRadius: 16, padding: '16px 18px', marginBottom: 20 }}>
+            {/* Student Individual Schedule or Onboarding Card */}
+            {(user?.scheduleDays?.length > 0 || user?.sessionTime) ? (
+              <div className="m-sched-card" style={{ background: HQ.MENTOR_WASH, border: `1px solid ${HQ.MENTOR}`, borderRadius: 16, padding: '16px 18px', marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-                  <span style={{ width: 42, height: 42, borderRadius: 12, background: '#E2EFE7', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                  <span style={{ width: 42, height: 42, borderRadius: 12, background: HQ.SURFACE, border: `1px solid ${HQ.MENTOR}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                    <CalendarCheck size={22} color={HQ.MENTOR} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <strong style={{ fontSize: 16, color: HQ.MENTOR_DEEP }}>
+                        مستواك المعتمد: {user?.assignedLevel ? getLevelLabel(user.assignedLevel) : 'محدد من الإدارة'}
+                      </strong>
+                      <HqBadge tone="mentor">جلسات مباشرة فردية</HqBadge>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.MENTOR_DEEP, lineHeight: 1.8, fontWeight: 600 }}>
+                      مواعيد البث المباشر المحددة لك: {user.scheduleDays?.join('، ') || 'أيام محددة'}
+                      {user.sessionTime ? ` — الساعة ${formatTime12Ar(user.sessionTime)}` : ''}
+                    </p>
+                    <p className="m-hide-sm" style={{ margin: '4px 0 0', fontSize: 13, color: HQ.MENTOR, lineHeight: 1.8 }}>
+                      يبدأ المعلم البث المباشر معك في الموعد المحدد، وستظهر لك الحصة مباشرة هنا لمتابعة التسميع وتلقي الدرس.
+                    </p>
+                    <div className="m-hide-sm" style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                      <Link to="/student/curriculum" style={{ fontSize: 13, fontWeight: 800, color: HQ.MENTOR_DEEP, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        عرض الدروس والمقرر الدراسي <ChevronLeft size={15} />
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 16, padding: '16px 18px', marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+                  <span style={{ width: 42, height: 42, borderRadius: 12, background: HQ.MENTOR_WASH, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                     <Sparkles size={20} color={HQ.MENTOR} />
                   </span>
                   <div style={{ flex: 1, minWidth: 220 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
                       <strong style={{ fontSize: 16, color: HQ.INK }}>
-                        مستواك المعتمد: {user?.assignedLevel ? getLevelLabel(user.assignedLevel) : 'بانتظار الاعتماد'}
+                        مستواك: {user?.assignedLevel ? getLevelLabel(user.assignedLevel) : 'بانتظار الاعتماد وتحديد المواعيد'}
                       </strong>
-                      <span style={{ fontSize: 12, fontWeight: 700, background: '#E2EFE7', color: '#0F5940', padding: '2px 10px', borderRadius: 20 }}>
-                        المرحلة 4: جارٍ تسكينك في حلقتك
-                      </span>
+                      <HqBadge tone="neutral">بانتظار اعتماد الإدارة للمواعيد</HqBadge>
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, color: HQ.MUTED, lineHeight: 1.6 }}>
-                      فريق الإشراف يختار لك حالياً أفضل حلقة ومعلم تناسب مواعيدك. ستصلك رسالة فور إضافتك للجدول، وريثما يتم ذلك ننصحك بتصفح المصحف المكرر والبدء في تهيئة وردك.
+                    <p style={{ margin: 0, fontSize: 13, color: HQ.MUTED, lineHeight: 1.8 }}>
+                      فريق الإشراف يقوم بمراجعة مستواك واعتماد أيام وساعة الجلسات المباشرة الفردية الخاصة بك.
                     </p>
-                    <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
-                      <Link to="/waiting-approval" style={{ fontSize: 13, fontWeight: 800, color: HQ.MENTOR, textDecoration: 'underline' }}>
-                        متابعة مسار التسكين اللحظي ←
+                    <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Link to="/waiting-approval" style={{ fontSize: 13, fontWeight: 800, color: HQ.MENTOR, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        متابعة حالة الاعتماد <ChevronLeft size={15} />
                       </Link>
-                      <span style={{ color: HQ.LINE }}>|</span>
+                      <span style={{ color: HQ.LINE }} aria-hidden>|</span>
                       <Link to="/student/quran" style={{ fontSize: 13, fontWeight: 700, color: HQ.INK }}>
                         تصفح المصحف المكرر
                       </Link>
@@ -402,7 +314,7 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            {/* Primary Urgent Action (e.g. Live now or urgent exam/homework) */}
+            {/* Primary Urgent Action (e.g. Live now or urgent exam) */}
             {primary && (
               <section aria-label="خطوتي الآن" style={{ marginBottom: 20 }}>
                 {primary.live && (
@@ -431,20 +343,12 @@ export default function StudentDashboard() {
                 UNIFIED TASKS HUB — Tabs System
                 ═══════════════════════════════════════════════════ */}
             <section id="today-tasks" aria-label="مركز المهام اليومية" style={{ marginBottom: 28 }}>
-              {/* Tabs Bar */}
+              {/* Tabs Bar — shared hq-tabs pattern */}
               <div
+                className="hq-tabs"
                 role="tablist"
                 aria-label="أقسام المهام المطلوبة"
-                style={{
-                  display: 'flex',
-                  gap: 6,
-                  background: HQ.SURFACE,
-                  border: `1px solid ${HQ.LINE}`,
-                  borderRadius: 14,
-                  padding: 4,
-                  marginBottom: 16,
-                  overflowX: 'auto',
-                }}
+                style={{ display: 'flex', width: '100%', marginBottom: 16 }}
               >
                 {tabsConfig.map(t => {
                   const isActive = activeTab === t.key;
@@ -455,31 +359,22 @@ export default function StudentDashboard() {
                       aria-selected={isActive}
                       onClick={() => handleTabChange(t.key)}
                       style={{
-                        border: 'none',
-                        cursor: 'pointer',
-                        minHeight: 44,
-                        padding: '0 16px',
-                        borderRadius: 10,
-                        fontSize: 14,
-                        fontWeight: 800,
-                        whiteSpace: 'nowrap',
-                        background: isActive ? HQ.MENTOR : 'transparent',
-                        color: isActive ? '#fff' : HQ.MUTED,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        transition: 'all 0.2s ease',
+                        fontFamily: 'inherit',
                       }}
                     >
                       {t.label}
                       {t.count > 0 && (
                         <span style={{
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: 900,
                           borderRadius: 9999,
-                          padding: '1px 7px',
-                          background: isActive ? 'rgba(255,255,255,0.25)' : '#E2EFE7',
-                          color: isActive ? '#fff' : '#0F5940',
+                          padding: '1px 8px',
+                          background: isActive ? 'rgba(255,255,255,0.25)' : HQ.MENTOR_WASH,
+                          color: isActive ? '#fff' : HQ.MENTOR_DEEP,
+                          fontVariantNumeric: 'tabular-nums',
                         }}>
                           {t.count}
                         </span>
@@ -499,7 +394,7 @@ export default function StudentDashboard() {
                         أحسنت! أتممت جميع المهام المطلوبة منك اليوم
                       </h3>
                       <p style={{ fontSize: 14, color: HQ.MUTED, margin: 0 }}>
-                        لا توجد واجبات أو اختبارات أو أوراد معلقة. يمكنك تصفح المصحف أو مراجعة محفوظاتك.
+                        لا توجد اختبارات أو أوراد معلقة. يمكنك تصفح المصحف أو مراجعة محفوظاتك.
                       </p>
                     </div>
                   ) : (
@@ -524,9 +419,10 @@ export default function StudentDashboard() {
                             <button
                               type="button"
                               onClick={() => handleTogglePortion(p.key)}
-                              aria-label={`تحديد ${p.label}`}
+                              aria-label={isDone ? `تعليم ${p.label} كمتبقٍ` : `تعليم ${p.label} كمنجز`}
+                              aria-pressed={isDone}
                               style={{
-                                width: 32, height: 32, borderRadius: 9999,
+                                width: 48, height: 48, borderRadius: 9999,
                                 border: `2px solid ${isDone ? HQ.MENTOR : HQ.LINE}`,
                                 background: isDone ? HQ.MENTOR : 'transparent',
                                 color: '#fff',
@@ -537,7 +433,7 @@ export default function StudentDashboard() {
                                 flex: 'none',
                               }}
                             >
-                              {isDone && <Check size={16} strokeWidth={3.5} />}
+                              {isDone && <Check size={20} strokeWidth={3.5} />}
                             </button>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -550,51 +446,12 @@ export default function StudentDashboard() {
                                 {portionName(portion) || 'ورد مخصص من المعلم'}
                               </span>
                             </div>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: isDone ? HQ.MENTOR : '#B45309' }}>
-                              {isDone ? 'منجز ✓' : 'متبقٍ'}
+                            <span style={{ fontSize: 13, fontWeight: 800, color: isDone ? HQ.MENTOR : HQ.WARNING, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              {isDone ? (<><Check size={14} strokeWidth={3.5} /> منجز</>) : 'متبقٍ'}
                             </span>
                           </div>
                         );
                       })}
-
-                      {/* Pending homework */}
-                      {pendingHwList.map(hw => (
-                        <div
-                          key={hw._id}
-                          style={{
-                            background: HQ.SURFACE,
-                            border: `1px solid #B45309`,
-                            borderRadius: 14,
-                            padding: '12px 16px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                          }}
-                        >
-                          <span style={{ width: 34, height: 34, borderRadius: 10, background: '#FEF3C7', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                            <Mic size={18} color="#B45309" />
-                          </span>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <strong style={{ display: 'block', fontSize: 15, color: HQ.INK }}>
-                              واجب تلاوة: {hw.quranHomework?.surahName ? `سورة ${hw.quranHomework.surahName} (${hw.quranHomework.fromVerse}-${hw.quranHomework.toVerse})` : hw.title}
-                            </strong>
-                            <span style={{ fontSize: 12, color: HQ.MUTED }}>
-                              مطلوب تسجيل صوتي للتلاوة وإرساله للمعلم
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleTabChange('homework');
-                              setExpandedHomework(hw._id);
-                            }}
-                            className="hq-action"
-                            style={{ background: '#B45309', color: '#fff', padding: '0 16px', fontSize: 13, flex: 'none' }}
-                          >
-                            تسجيل الواجب
-                          </button>
-                        </div>
-                      ))}
 
                       {/* Pending exams */}
                       {pendingExams.map(ex => (
@@ -610,9 +467,9 @@ export default function StudentDashboard() {
                             gap: 12,
                           }}
                         >
-                          <span style={{ width: 34, height: 34, borderRadius: 10, background: '#E2EFE7', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                            <FileText size={18} color={HQ.MENTOR} />
-                          </span>
+                           <span style={{ width: 34, height: 34, borderRadius: 10, background: HQ.MENTOR_WASH, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                             <FileText size={18} color={HQ.MENTOR} />
+                           </span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <strong style={{ display: 'block', fontSize: 15, color: HQ.INK }}>
                               {ex.title}
@@ -650,7 +507,7 @@ export default function StudentDashboard() {
 
                   {!dailyTask ? (
                     <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 16, padding: 32, textAlign: 'center', marginBottom: 20 }}>
-                      <BookOpen size={36} color={HQ.LINE} style={{ margin: '0 auto 8px' }} />
+                      <BookOpen size={36} color={HQ.MUTED} style={{ margin: '0 auto 8px' }} />
                       <p style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 800, color: HQ.INK }}>لا ورد محدد لليوم بعد</p>
                       <p style={{ margin: 0, fontSize: 13, color: HQ.MUTED }}>يحدد معلمك وردك ومقدار الحفظ في الحلقة القادمة.</p>
                     </div>
@@ -664,7 +521,7 @@ export default function StudentDashboard() {
                             key={p.key}
                             style={{
                               background: HQ.SURFACE,
-                              border: `1.5px solid ${isDone ? HQ.MENTOR : HQ.LINE}`,
+                              border: `1px solid ${isDone ? HQ.MENTOR : HQ.LINE}`,
                               borderRadius: 14,
                               padding: 16,
                               display: 'flex',
@@ -676,8 +533,9 @@ export default function StudentDashboard() {
                               type="button"
                               onClick={() => handleTogglePortion(p.key)}
                               aria-pressed={isDone}
+                              aria-label={isDone ? `تعليم ${p.label} كمتبقٍ` : `تعليم ${p.label} كمنجز`}
                               style={{
-                                width: 36, height: 36, borderRadius: 9999,
+                                width: 48, height: 48, borderRadius: 9999,
                                 border: `2px solid ${isDone ? HQ.MENTOR : HQ.LINE}`,
                                 background: isDone ? HQ.MENTOR : 'transparent',
                                 color: '#fff',
@@ -700,8 +558,11 @@ export default function StudentDashboard() {
                               </p>
                             </div>
                             <Link
-                              to="/student/quran"
-                              style={{ fontSize: 13, fontWeight: 800, color: HQ.MENTOR, textDecoration: 'none', background: HQ.PAPER, padding: '6px 12px', borderRadius: 8, border: `1px solid ${HQ.LINE}` }}
+                              to={portion?.surahNumber && portion?.fromVerse && portion?.toVerse
+                                ? `/student/quran?surah=${portion.surahNumber}&from=${portion.fromVerse}&to=${portion.toVerse}`
+                                : '/student/quran'}
+                              title={portion?.surahNumber ? 'الانتقال للآيات المطلوبة مظللة في المصحف' : undefined}
+                              style={{ fontSize: 13, fontWeight: 800, color: HQ.MENTOR, textDecoration: 'none', background: HQ.PAPER, padding: '6px 12px', borderRadius: 8, border: `1px solid ${HQ.LINE}`, minHeight: 48, display: 'inline-flex', alignItems: 'center' }}
                             >
                               افتح المصحف
                             </Link>
@@ -710,269 +571,10 @@ export default function StudentDashboard() {
                       })}
                     </div>
                   )}
-
-                  {/* Teacher Approved Recitations (سجل إنجازات التسميع لهذا الأسبوع) */}
-                  <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${HQ.LINE}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: HQ.INK }}>
-                        سجل التسميع المعتمد من المعلم ({weeklyRecords.length})
-                      </h3>
-                      <span style={{ fontSize: 12, color: HQ.MUTED }}>هذا الأسبوع</span>
-                    </div>
-
-                    {weeklyRecords.length === 0 ? (
-                      <p style={{ fontSize: 13, color: HQ.MUTED, margin: 0 }}>
-                        لا توجد جلسات تسميع معتمدة لهذا الأسبوع بعد — يعتمد المعلم إنجازك في سجلك بعد كل حصة.
-                      </p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {weeklyRecords.slice(0, 5).map(rec => (
-                          <div
-                            key={rec._id}
-                            style={{
-                              background: HQ.SURFACE,
-                              border: `1px solid ${HQ.LINE}`,
-                              borderRadius: 12,
-                              padding: '10px 14px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              gap: 10,
-                            }}
-                          >
-                            <div>
-                              <strong style={{ display: 'block', fontSize: 14, color: HQ.INK }}>
-                                سورة {rec.surahName} · الآيات {rec.fromVerse} إلى {rec.toVerse}
-                              </strong>
-                              <span style={{ fontSize: 12, color: HQ.MUTED }}>
-                                {formatDateAr(rec.createdAt)} · {rec.activityType === 'memorization' ? 'حفظ جديد' : 'مراجعة'}
-                              </span>
-                            </div>
-                            <HqBadge tone={rec.status === 'approved' ? 'mentor' : 'neutral'}>
-                              {rec.status === 'approved' ? 'معتمد ✓' : 'قيد المراجعة'}
-                            </HqBadge>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
-              {/* ── TAB 3: HOMEWORK (الواجبات الصوتية والتسجيل) ── */}
-              {activeTab === 'homework' && (
-                <div>
-                  <div style={{ marginBottom: 14 }}>
-                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900, color: HQ.INK }}>
-                      الواجبات والتسجيلات الصوتية المطلوبة ({homeworkSessions.length})
-                    </h3>
-                    <p style={{ margin: '2px 0 0', fontSize: 13, color: HQ.MUTED }}>
-                      استمع للآيات، وسجل تلاوتك بصوتك، وأرسلها للمعلم للتقييم والتصويب
-                    </p>
-                  </div>
-
-                  {homeworkSessions.length === 0 ? (
-                    <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 16, padding: 36, textAlign: 'center' }}>
-                      <Mic size={36} color={HQ.LINE} style={{ margin: '0 auto 8px' }} />
-                      <p style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 800, color: HQ.INK }}>لا توجد واجبات مطلوبة حالياً</p>
-                      <p style={{ margin: 0, fontSize: 13, color: HQ.MUTED }}>معلمك يضيف الواجبات والتكليفات الصوتية بعد نهاية كل حصة مباشرة.</p>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      {homeworkSessions.map(sess => {
-                        const isExpanded = expandedHomework === sess._id;
-                        const mySub = getMySubmission(sess);
-                        const isDone = Boolean(mySub);
-
-                        return (
-                          <div
-                            key={sess._id}
-                            style={{
-                              background: HQ.SURFACE,
-                              border: `1.5px solid ${isDone ? HQ.LINE : '#B45309'}`,
-                              borderRadius: 16,
-                              overflow: 'hidden',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                            }}
-                          >
-                            {/* Homework Card Header */}
-                            <div
-                              style={{
-                                padding: '14px 16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 12,
-                                background: isDone ? HQ.SURFACE : '#FFFDF7',
-                                cursor: 'pointer',
-                              }}
-                              onClick={() => toggleExpandHomework(sess)}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ width: 34, height: 34, borderRadius: 10, background: isDone ? '#E2EFE7' : '#FEF3C7', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                                  <Mic size={17} color={isDone ? HQ.MENTOR : '#B45309'} />
-                                </span>
-                                <div>
-                                  <strong style={{ display: 'block', fontSize: 15, color: HQ.INK }}>
-                                    {sess.quranHomework?.surahName
-                                      ? `واجب سورة ${sess.quranHomework.surahName} (الآيات ${sess.quranHomework.fromVerse} إلى ${sess.quranHomework.toVerse})`
-                                      : sess.title}
-                                  </strong>
-                                  <span style={{ fontSize: 12, color: HQ.MUTED }}>
-                                    حصة: {sess.title} · {formatDateAr(sess.scheduledAt || sess.createdAt)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <HqBadge tone={isDone ? (mySub.grade ? 'mentor' : 'neutral') : 'gold'}>
-                                  {isDone ? (mySub.grade ? `تم التصحيح (${mySub.grade}%)` : 'تم التسليم ✓') : 'بانتظار التسليم'}
-                                </HqBadge>
-                                {isExpanded ? <ChevronUp size={18} color={HQ.MUTED} /> : <ChevronDown size={18} color={HQ.MUTED} />}
-                              </div>
-                            </div>
-
-                            {/* Expanded Submission & Recitation Details */}
-                            {isExpanded && (
-                              <div style={{ padding: '16px', borderTop: `1px solid ${HQ.LINE}`, background: HQ.PAPER }}>
-                                {sess.homework && (
-                                  <div style={{ marginBottom: 12 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 800, color: HQ.MUTED }}>ملاحظات المعلم للواجب:</span>
-                                    <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.INK }}>{sess.homework}</p>
-                                  </div>
-                                )}
-
-                                {/* Quran Verses Preview */}
-                                {sess.quranHomework?.surahNumber && (
-                                  <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 12, marginBottom: 14 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 800, color: HQ.MENTOR, display: 'block', marginBottom: 6 }}>
-                                      نص الآيات المقررة للتلاوة:
-                                    </span>
-                                    {loadingVerses[sess._id] ? (
-                                      <p style={{ fontSize: 13, color: HQ.MUTED, margin: 0 }}>جارٍ تحميل الآيات من المصحف...</p>
-                                    ) : quranVerses[sess._id]?.length ? (
-                                      <div style={{ fontFamily: 'Amiri, serif', fontSize: 17, lineHeight: 2.2, color: HQ.INK, textAlign: 'justify' }}>
-                                        {quranVerses[sess._id].map(v => (
-                                          <span key={v.number}>
-                                            {v.text} <span style={{ color: HQ.MENTOR, fontSize: 14 }}>﴿{v.numberInSurah}﴾</span>{' '}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <p style={{ fontSize: 13, color: HQ.MUTED, margin: 0 }}>
-                                        سورة رقم {sess.quranHomework.surahNumber} من الآية {sess.quranHomework.fromVerse} إلى {sess.quranHomework.toVerse}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Past submission review if submitted */}
-                                {isDone && mySub ? (
-                                  <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 14 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                      <span style={{ fontSize: 13, fontWeight: 800, color: HQ.INK }}>تسليمك المسجل:</span>
-                                      <span style={{ fontSize: 12, color: HQ.MUTED }}>{formatDateAr(mySub.submittedAt)}</span>
-                                    </div>
-                                    {mySub.audioUrl && (
-                                      <div style={{ marginBottom: 10 }}>
-                                        <audio controls src={mySub.audioUrl} style={{ width: '100%', height: 36 }} />
-                                      </div>
-                                    )}
-                                    {mySub.feedback && (
-                                      <div style={{ background: '#FEF3C7', borderRadius: 8, padding: 10, marginTop: 8 }}>
-                                        <span style={{ fontSize: 12, fontWeight: 800, color: '#B45309', display: 'block', marginBottom: 2 }}>
-                                          ملاحظات وتقييم المعلم:
-                                        </span>
-                                        <p style={{ margin: 0, fontSize: 13, color: HQ.INK }}>{mySub.feedback}</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  /* New Submission: In-place Audio Recorder & Notes */
-                                  <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 16 }}>
-                                    <h4 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 800, color: HQ.INK }}>
-                                      سجل تلاوتك الآن وسلم الواجب
-                                    </h4>
-
-                                    {/* Audio Recorder Controls */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-                                      {!isRecording && !audioBlob && (
-                                        <button
-                                          type="button"
-                                          onClick={startHwRecording}
-                                          className="hq-action"
-                                          style={{ background: '#B45309', color: '#fff', padding: '0 20px', fontSize: 14 }}
-                                        >
-                                          <Mic size={16} /> ابدأ تسجيل التلاوة
-                                        </button>
-                                      )}
-                                      {isRecording && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#C2410C', fontWeight: 800, fontSize: 14 }}>
-                                            <span className="hq-live-dot" style={{ background: '#C2410C' }} aria-hidden />
-                                            جارٍ التسجيل: {formatTime(recordingSeconds)}
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={stopHwRecording}
-                                            className="hq-action"
-                                            style={{ background: '#C2410C', color: '#fff', padding: '0 16px', fontSize: 13 }}
-                                          >
-                                            <Square size={14} /> إيقاف وحفظ
-                                          </button>
-                                        </div>
-                                      )}
-                                      {audioBlob && !isRecording && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: '100%' }}>
-                                          <audio controls src={audioUrl} style={{ height: 36, flex: 1, minWidth: 200 }} />
-                                          <button
-                                            type="button"
-                                            onClick={deleteHwRecording}
-                                            className="hq-action"
-                                            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: '#C2410C', padding: '0 12px', fontSize: 13 }}
-                                          >
-                                            <Trash2 size={15} /> إعادة التسجيل
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Optional Notes */}
-                                    <div style={{ marginBottom: 14 }}>
-                                      <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: HQ.MUTED, marginBottom: 4 }}>
-                                        ملاحظة لمعلمك (اختياري):
-                                      </label>
-                                      <input
-                                        type="text"
-                                        value={homeworkNotes[sess._id] || ''}
-                                        onChange={(e) => setHomeworkNotes({ ...homeworkNotes, [sess._id]: e.target.value })}
-                                        placeholder="اكتب أي ملاحظة أو استفسار بخصوص التلاوة..."
-                                        style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${HQ.LINE}`, background: HQ.PAPER, fontSize: 13, color: HQ.INK, fontFamily: 'inherit' }}
-                                      />
-                                    </div>
-
-                                    {/* Submit Button */}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSubmitHomework(sess._id)}
-                                      disabled={isSubmittingHw || (!audioBlob && !homeworkNotes[sess._id])}
-                                      className="hq-action"
-                                      style={{ width: '100%', background: HQ.MENTOR, color: '#fff', fontSize: 15, opacity: (isSubmittingHw || (!audioBlob && !homeworkNotes[sess._id])) ? 0.5 : 1 }}
-                                    >
-                                      <Send size={16} /> {isSubmittingHw ? 'جارٍ تسليم الواجب...' : 'تسليم الواجب للمعلم'}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── TAB 4: EXAMS & ORAL RECITATIONS (الاختبارات الشفهية والتحريرية) ── */}
+              {/* ── TAB 3: EXAMS (الاختبارات الشفهية والتحريرية) ── */}
               {activeTab === 'exams' && (
                 <div>
                   <div style={{ marginBottom: 14 }}>
@@ -998,8 +600,8 @@ export default function StudentDashboard() {
                           <div
                             key={exam._id}
                             style={{
-                              background: required ? '#E2EFE7' : HQ.SURFACE,
-                              border: `1.5px solid ${required ? HQ.MENTOR : HQ.LINE}`,
+                              background: required ? HQ.MENTOR_WASH : HQ.SURFACE,
+                              border: `1px solid ${required ? HQ.MENTOR : HQ.LINE}`,
                               borderRadius: 16,
                               padding: 16,
                               display: 'flex',
@@ -1011,7 +613,7 @@ export default function StudentDashboard() {
                           >
                             <div style={{ flex: 1, minWidth: 200 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-                                <strong style={{ fontSize: 16, color: required ? HQ.MENTOR : HQ.INK }}>
+                                <strong style={{ fontSize: 16, color: required ? HQ.MENTOR_DEEP : HQ.INK }}>
                                   {exam.title}
                                 </strong>
                                 {required && <HqBadge tone="mentor">مطلوب الآن</HqBadge>}
@@ -1067,8 +669,8 @@ export default function StudentDashboard() {
                               <span style={{ fontSize: 15, fontWeight: 900, color: HQ.MENTOR }}>
                                 {res.score !== undefined ? `${res.score}%` : 'تم التدقيق'}
                               </span>
-                              <HqBadge tone={res.status === 'passed' || res.score >= 60 ? 'mentor' : 'gold'}>
-                                {res.status === 'passed' || res.score >= 60 ? 'ناجح' : 'مكتمل'}
+                              <HqBadge tone={res.status === 'passed' || (res.score !== undefined && res.score >= 60) ? 'mentor' : 'neutral'}>
+                                {res.status === 'passed' || (res.score !== undefined && res.score >= 60) ? 'ناجح' : 'مكتمل'}
                               </HqBadge>
                             </div>
                           </div>
@@ -1093,14 +695,18 @@ export default function StudentDashboard() {
                   </strong>
                   {upcomingSession && (
                     <p style={{ margin: '4px 0 0', fontSize: 13, color: HQ.MUTED }}>
-                      {group?.name || upcomingSession.group?.name || 'مجموعتك'}
-                      {upcomingSession.status === 'scheduled' && upcomingSession.scheduledAt ? ` · ${getSmartDateLabel(upcomingSession.scheduledAt)}` : ''}
+                      {upcomingSession.teacher ? `مع ${upcomingSession.teacher.firstName || ''} ${upcomingSession.teacher.lastName || ''}`.trim() : 'حصتك الفردية المباشرة'}
+                      {upcomingSession.status === 'scheduled' && upcomingSession.scheduledAt ? ` · ${getSmartDateLabel(upcomingSession.scheduledAt)}${timeLeftText ? ` · ${timeLeftText}` : ''}` : ''}
                     </p>
                   )}
                 </div>
                 {upcomingSession && (
                   <HqActionLink to="/student/live" primary={upcomingSession.status === 'live'}>
-                    {upcomingSession.status === 'live' ? 'دخول الحلقة الآن 🔴' : 'غرفة الحلقة'}
+                    {upcomingSession.status === 'live' ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        دخول الحلقة الآن <span className="hq-live-dot" aria-hidden />
+                      </span>
+                    ) : 'غرفة الحلقة'}
                   </HqActionLink>
                 )}
               </div>
@@ -1109,7 +715,7 @@ export default function StudentDashboard() {
             {/* Curriculum link */}
             <div style={{ textAlign: 'center', padding: '8px 0' }}>
               <Link to="/student/curriculum" style={{ fontSize: 14, fontWeight: 800, color: HQ.MENTOR, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                الانتقال إلى المنهج ومحتوى المجموعة <ChevronLeft size={16} />
+                الانتقال إلى الحصص السابقة <ChevronLeft size={16} />
               </Link>
             </div>
           </>

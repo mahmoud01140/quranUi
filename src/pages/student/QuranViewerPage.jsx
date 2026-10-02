@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BookOpen, ChevronLeft, ChevronRight, ChevronDown, Search, Check, Loader2,
   Eye, EyeOff, Sparkles, Repeat, X, BookMarked, Info
@@ -20,10 +21,15 @@ import { HQ } from '../../components/halaqa/primitives';
 export default function QuranViewerPage() {
   const [selectedSurah, setSelectedSurah] = useState(1);
   const [verses, setVerses] = useState([]);
-  const [memorizedVerses, setMemorizedVerses] = useState({});
+  const [memorizedVerses] = useState({});
   const [loadingVerses, setLoadingVerses] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSurahList, setShowSurahList] = useState(true);
+
+  // تظليل آيات الورد المطلوب (من لوحة الطالب أو زر الورد المطلوب)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [wirdRange, setWirdRange] = useState(null); // { surah, from, to }
+  const [loadingWird, setLoadingWird] = useState(false);
 
   // ── Memorization & Blur Mode states (unchanged) ──
   const [isBlurMode, setIsBlurMode] = useState(false);
@@ -43,13 +49,6 @@ export default function QuranViewerPage() {
   const versesContainerRef = useRef(null);
   const surah = QURAN_SURAHS.find(s => s.number === selectedSurah);
 
-  // ── Fetch memorization map (unchanged) ──
-  useEffect(() => {
-    api.get('/daily-records/memorization-map')
-      .then(res => setMemorizedVerses(res.data.memorizedVerses || {}))
-      .catch(() => {});
-  }, []);
-
   // ── Fetch surah text (unchanged) ──
   const fetchVerses = useCallback(async (surahNum) => {
     setLoadingVerses(true);
@@ -67,6 +66,56 @@ export default function QuranViewerPage() {
   }, []);
 
   useEffect(() => { fetchVerses(selectedSurah); }, [selectedSurah, fetchVerses]);
+
+  // قراءة التوجيه من الرابط (?surah=&from=&to=) — من زر "افتح المصحف" في الورد
+  useEffect(() => {
+    const s = Number(searchParams.get('surah'));
+    const f = Number(searchParams.get('from'));
+    const t = Number(searchParams.get('to'));
+    if (s >= 1 && s <= 114 && f >= 1 && t >= f) {
+      setSelectedSurah(s);
+      setWirdRange({ surah: s, from: f, to: t });
+      setShowSurahList(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // التمرير لموضع أول آية في الورد بعد تحميل السورة
+  useEffect(() => {
+    if (!wirdRange || wirdRange.surah !== selectedSurah || !verses.length) return;
+    const idx = verses.findIndex(v => v.numberInSurah === wirdRange.from);
+    if (idx >= 0) {
+      const t = setTimeout(() => {
+        const el = document.querySelector(`[data-verse-index="${idx}"]`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 350);
+      return () => clearTimeout(t);
+    }
+  }, [verses, wirdRange, selectedSurah]);
+
+  // زر "الورد المطلوب": يعرض آيات الحفظ الجديد فقط (وليس الماضي)
+  const handleShowRequiredWird = async () => {
+    setLoadingWird(true);
+    try {
+      const res = await api.get('/daily-tasks/today');
+      const task = res.data?.task || res.data?.dailyTask || null;
+      const hifz = task?.newHifz;
+      if (hifz?.surahNumber && hifz?.fromVerse && hifz?.toVerse) {
+        const s = Number(hifz.surahNumber);
+        setSelectedSurah(s);
+        setWirdRange({ surah: s, from: Number(hifz.fromVerse), to: Number(hifz.toVerse) });
+        setShowSurahList(false);
+        setSearchParams({ surah: String(s), from: String(hifz.fromVerse), to: String(hifz.toVerse) });
+        toast.success(`وردك الجديد: سورة ${hifz.surahName || ''} من الآية ${hifz.fromVerse} إلى ${hifz.toVerse}`);
+      } else {
+        toast('لا يوجد ورد حفظ جديد محدد لك اليوم بعد');
+      }
+    } catch {
+      toast.error('تعذر جلب الورد المطلوب');
+    } finally {
+      setLoadingWird(false);
+    }
+  };
 
   // ── Load audio when surah or reciter changes (unchanged) ──
   useEffect(() => {
@@ -170,7 +219,7 @@ export default function QuranViewerPage() {
                   <Search size={15} color={HQ.MUTED} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }} />
                   <input type="text" placeholder="ابحث عن سورة..." value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)} aria-label="البحث عن سورة"
-                    style={{ width: '100%', background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '10px 36px 10px 12px', fontSize: 13, color: HQ.INK, fontFamily: 'inherit', minHeight: 44 }} />
+                    style={{ width: '100%', background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '10px 36px 10px 12px', fontSize: 16, color: HQ.INK, fontFamily: 'inherit', minHeight: 44 }} />
                 </div>
               </div>
               <div style={{ maxHeight: '56vh', overflowY: 'auto' }}>
@@ -247,6 +296,11 @@ export default function QuranViewerPage() {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" onClick={handleShowRequiredWird} disabled={loadingWird}
+                    className="hq-action"
+                    style={{ background: '#F8EDD3', border: '1px solid #D9A441', color: '#7C5A12', padding: '0 16px', fontSize: 13, opacity: loadingWird ? 0.6 : 1 }}>
+                    <BookOpen size={15} /> {loadingWird ? 'جارٍ الجلب...' : 'الورد المطلوب'}
+                  </button>
                   <button type="button" aria-pressed={isBlurMode}
                     onClick={() => { const next = !isBlurMode; setIsBlurMode(next); if (next) handleHideAll(); }}
                     className="hq-action"
@@ -291,12 +345,26 @@ export default function QuranViewerPage() {
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                     <span aria-hidden style={{ width: 9, height: 9, borderRadius: 9999, background: '#B45309' }} /> متشابهة
                   </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <span aria-hidden style={{ width: 9, height: 9, borderRadius: 9999, background: '#D9A441' }} /> الورد المطلوب
+                  </span>
                   <strong style={{ color: HQ.INK }}>{memorizedCount} / {totalVerses}</strong>
                 </div>
               </div>
             </div>
 
             {/* Verses — Amiri leads */}
+            {wirdRange && wirdRange.surah === selectedSurah && (
+              <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', background: '#F8EDD3', border: '1px solid #D9A441', borderRadius: 14, padding: '10px 14px', marginBottom: 12 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#7C5A12' }}>
+                  وردك المطلوب مظلل بالذهبي: الآيات {wirdRange.from} إلى {wirdRange.to}
+                </span>
+                <button type="button" onClick={() => { setWirdRange(null); setSearchParams({}); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 800, color: HQ.MUTED, minHeight: 44, padding: '0 8px' }}>
+                  إخفاء التظليل
+                </button>
+              </div>
+            )}
             {loadingVerses ? (
               <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 48, textAlign: 'center' }} aria-label="جارٍ تحميل الآيات">
                 <Loader2 size={32} color={HQ.MENTOR} className="animate-spin" style={{ margin: '0 auto 8px' }} />
@@ -317,6 +385,7 @@ export default function QuranViewerPage() {
                     const isVersePlaying = isCurrentVerse && isPlaying;
                     const mutashabih = getMutashabihForAyah(selectedSurah, verseNum);
                     const isRevealed = !isBlurMode || revealedVerses.has(index);
+                    const inWird = Boolean(wirdRange && wirdRange.surah === selectedSurah && verseNum >= wirdRange.from && verseNum <= wirdRange.to);
 
                     return (
                       <span key={verse.number} data-verse-index={index} style={{ display: 'inline-block', position: 'relative', margin: '0 4px' }}>
@@ -327,10 +396,10 @@ export default function QuranViewerPage() {
                           style={{
                             display: 'inline', padding: '2px 6px', borderRadius: 8, cursor: 'pointer',
                             filter: !isRevealed ? 'blur(7px)' : 'none',
-                            background: !isRevealed ? HQ.PAPER : isCurrentVerse ? '#E2EFE7' : isMemorized ? '#E2EFE7' : 'transparent',
-                            color: !isRevealed ? HQ.MUTED : isCurrentVerse ? HQ.MENTOR : HQ.INK,
-                            fontWeight: isCurrentVerse ? 700 : 400,
-                            outline: isCurrentVerse ? `2px solid ${HQ.MENTOR}` : 'none',
+                            background: !isRevealed ? HQ.PAPER : inWird ? '#FCEFC7' : isCurrentVerse ? '#E2EFE7' : isMemorized ? '#E2EFE7' : 'transparent',
+                            color: !isRevealed ? HQ.MUTED : inWird ? '#7C5A12' : isCurrentVerse ? HQ.MENTOR : HQ.INK,
+                            fontWeight: isCurrentVerse || inWird ? 700 : 400,
+                            outline: isCurrentVerse ? `2px solid ${HQ.MENTOR}` : inWird ? '2px solid #D9A441' : 'none',
                           }}>
                           {verse.text}
                         </span>
@@ -356,7 +425,7 @@ export default function QuranViewerPage() {
                               display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer',
                               background: HQ.SURFACE, color: '#B45309', border: '1px solid #B45309',
                               fontSize: '0.8125rem', fontWeight: 800, padding: '3px 10px', borderRadius: 9999,
-                              verticalAlign: 'middle', margin: '0 4px', minHeight: 30,
+                              verticalAlign: 'middle', margin: '0 4px', minHeight: 44,
                             }}>
                             <Sparkles size={12} /> متشابهة
                           </button>
@@ -366,7 +435,7 @@ export default function QuranViewerPage() {
                             aria-label={isRevealed ? 'إخفاء الآية' : 'كشف الآية'}
                             style={{
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                              width: 32, height: 32, borderRadius: 9999, border: `1px solid ${HQ.LINE}`,
+                              width: 44, height: 44, borderRadius: 9999, border: `1px solid ${HQ.LINE}`,
                               background: HQ.PAPER, color: HQ.MUTED, cursor: 'pointer',
                               verticalAlign: 'middle', margin: '0 2px',
                             }}>

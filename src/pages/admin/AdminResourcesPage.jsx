@@ -2,20 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import {
   FolderOpen, Upload, FileText, Video, Image, Music, Trash2,
-  Plus, X, ChevronLeft, Users, Download, Filter, Shield, RefreshCw, Check,
+  Plus, X, Download, Filter, Shield, RefreshCw, Check, Search,
 } from 'lucide-react';
 import PageLayout from '../../components/shared/PageLayout';
 import Pagination from '../../components/shared/Pagination';
 import usePagination from '../../hooks/usePagination';
-import useGroupStore from '../../store/groupStore';
 import useResourceStore from '../../store/resourceStore';
-import { timeAgoAr, getLevelLabel, formatFileSize } from '../../utils/helpers';
+import { timeAgoAr, formatFileSize } from '../../utils/helpers';
 import toast from 'react-hot-toast';
 import '../../components/halaqa/halaqa.css';
 import { HQ } from '../../components/halaqa/primitives';
 
-/* Resource library — groups, categories and uploads.
-   Same filters, upload payload and actions as before; visual only. */
+/* المكتبة العامة — ملفات للجميع: يراها كل طالب محدد المستوى ومسدد الاشتراك. */
 
 const CATEGORIES = {
   tajweed: { label: 'أحكام التجويد' },
@@ -23,13 +21,6 @@ const CATEGORIES = {
   summary: { label: 'ملخصات' },
   exam_prep: { label: 'تحضير امتحانات' },
   other: { label: 'أخرى' },
-};
-
-const LEVEL_TONE = {
-  foundation: { wash: '#E2EFE7', fg: '#0F5940' },
-  memorization: { wash: '#ECE9F4', fg: '#4A3F6B' },
-  teacher_prep: { wash: '#ECE9F4', fg: '#4A3F6B' },
-  senior: { wash: '#FBF7EE', fg: '#2A2438' },
 };
 
 const FILE_ICON = { pdf: FileText, video: Video, audio: Music, image: Image, other: FileText };
@@ -41,10 +32,8 @@ const field = {
 };
 
 export default function AdminResourcesPage() {
-  const { groups, fetchAllGroups } = useGroupStore();
-  const { resources, isLoading, fetchGroupResources, uploadResource, deleteResource, trackDownload } = useResourceStore();
+  const { resources, isLoading, fetchGeneralResources, uploadResource, deleteResource, trackDownload } = useResourceStore();
 
-  const [selectedGroup, setSelectedGroup] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,18 +42,14 @@ export default function AdminResourcesPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileRef = useRef(null);
 
-  useEffect(() => { fetchAllGroups(); }, []);
-
-  const filteredGroups = groups.filter(g =>
-    !searchQuery || g.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const groupsPagination = usePagination(filteredGroups, 6);
-  const resourcesPagination = usePagination(resources, 6);
-
   useEffect(() => {
-    if (selectedGroup) fetchGroupResources(selectedGroup._id, { category: categoryFilter !== 'all' ? categoryFilter : undefined });
-  }, [selectedGroup?._id, categoryFilter]);
+    fetchGeneralResources({ category: categoryFilter !== 'all' ? categoryFilter : undefined });
+  }, [categoryFilter]);
+
+  const filtered = resources.filter(r =>
+    !searchQuery || r.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const resourcesPagination = usePagination(filtered, 6);
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -76,10 +61,9 @@ export default function AdminResourcesPage() {
       formData.append('resource', selectedFile);
       formData.append('title', form.title);
       formData.append('description', form.description);
-      formData.append('groupId', selectedGroup._id);
       formData.append('category', form.category);
       await uploadResource(formData);
-      toast.success('تم رفع الملف بنجاح');
+      toast.success('تم رفع الملف في المكتبة العامة بنجاح');
       setShowUpload(false);
       setForm({ title: '', description: '', category: 'other' });
       setSelectedFile(null);
@@ -123,87 +107,33 @@ export default function AdminResourcesPage() {
     color: HQ.MUTED, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   };
 
-  // Group selection
-  if (!selectedGroup) {
-    return (
-      <PageLayout>
-        <MotionConfig reducedMotion="user">
-          <div className="halaqa" style={{ maxWidth: 1000, margin: '0 auto' }}>
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mb-6">
-              <h1 className="flex items-center gap-2" style={{ fontSize: '1.5rem', fontWeight: 800, color: HQ.INK, margin: '0 0 4px' }}>
-                <Shield size={22} color={HQ.MENTOR} aria-hidden /> مكتبة الموارد التعليمية
-              </h1>
-              <p className="text-sm" style={{ color: HQ.MUTED, margin: 0 }}>اختر مجموعة لإدارة الموارد التعليمية</p>
-            </motion.div>
-            <div className="mb-5" style={{ maxWidth: 448 }}>
-              <div className="relative">
-                <Search size={15} color={HQ.MUTED} aria-hidden className="absolute right-3.5 top-1/2 -translate-y-1/2" />
-                <input type="text" placeholder="ابحث عن مجموعة..." value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)} aria-label="بحث عن مجموعة"
-                  className="pr-10 focus:border-[#177B58] focus:outline-none" style={field} />
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {groupsPagination.paginatedItems.map(group => {
-                const tone = LEVEL_TONE[group.level] || { wash: HQ.PAPER, fg: HQ.MUTED };
-                return (
-                  <button key={group._id} type="button" onClick={() => setSelectedGroup(group)}
-                    className="p-6 text-right w-full"
-                    style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, cursor: 'pointer' }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold px-2.5 py-1" style={{ backgroundColor: tone.wash, color: tone.fg, borderRadius: 8 }}>
-                        {getLevelLabel(group.level)}
-                      </span>
-                      <span className="text-xs flex items-center gap-1" style={{ color: HQ.MUTED, fontVariantNumeric: 'tabular-nums' }}>
-                        <Users size={13} aria-hidden /> {group.students?.length || 0}
-                      </span>
-                    </div>
-                    <h3 className="font-extrabold" style={{ color: HQ.INK, margin: '0 0 8px' }}>{group.name}</h3>
-                    <div className="flex items-center gap-2 text-sm font-bold" style={{ color: HQ.MENTOR }}>
-                      <FolderOpen size={15} aria-hidden /> إدارة الموارد
-                      <ChevronLeft size={15} aria-hidden style={{ marginRight: 'auto' }} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <Pagination
-              currentPage={groupsPagination.currentPage}
-              totalPages={groupsPagination.totalPages}
-              totalItems={groupsPagination.totalItems}
-              pageSize={groupsPagination.pageSize}
-              onPageChange={groupsPagination.setCurrentPage}
-              onPageSizeChange={groupsPagination.setPageSize}
-              showPageSize={true}
-              pageSizeOptions={[6, 12, 24]}
-              itemName="مجموعة"
-              className="mt-6"
-            />
-          </div>
-        </MotionConfig>
-      </PageLayout>
-    );
-  }
-
   return (
     <PageLayout>
       <MotionConfig reducedMotion="user">
         <div className="halaqa" style={{ maxWidth: 1000, margin: '0 auto' }}>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="mb-6">
             <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setSelectedGroup(null)} aria-label="العودة لاختيار المجموعة" style={iconBtn}>
-                  <ChevronLeft size={19} color={HQ.MUTED} aria-hidden style={{ transform: 'scaleX(-1)' }} />
-                </button>
-                <div>
-                  <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: HQ.INK, margin: '0 0 4px' }}>موارد {selectedGroup.name}</h1>
-                  <p className="text-sm" style={{ color: HQ.MUTED, margin: 0, fontVariantNumeric: 'tabular-nums' }}>{resources.length} مورد تعليمي</p>
-                </div>
+              <div>
+                <h1 className="flex items-center gap-2" style={{ fontSize: '1.5rem', fontWeight: 800, color: HQ.INK, margin: '0 0 4px' }}>
+                  <Shield size={22} color={HQ.MENTOR} aria-hidden /> المكتبة العامة
+                </h1>
+                <p className="text-sm" style={{ color: HQ.MUTED, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {resources.length} مورد — يراها كل طالب محدد المستوى ومسدد الاشتراك
+                </p>
               </div>
               <button type="button" onClick={() => setShowUpload(!showUpload)}
                 style={showUpload ? { ...ghostBtn } : { ...primaryBtn }}>
                 {showUpload ? <><X size={15} aria-hidden /> إغلاق</> : <><Upload size={15} aria-hidden /> رفع ملف</>}
               </button>
+            </div>
+
+            <div className="mb-4" style={{ maxWidth: 448 }}>
+              <div className="relative">
+                <Search size={15} color={HQ.MUTED} aria-hidden className="absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <input type="text" placeholder="ابحث في المكتبة..." value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)} aria-label="بحث في المكتبة"
+                  className="pr-10 focus:border-[#177B58] focus:outline-none" style={field} />
+              </div>
             </div>
 
             {/* Category filter */}
@@ -241,7 +171,7 @@ export default function AdminResourcesPage() {
               <motion.form initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }}
                 onSubmit={handleUpload} className="p-5 mb-5 overflow-hidden" style={panel}>
                 <h3 className="font-bold mb-4 flex items-center gap-2" style={{ color: HQ.INK, marginTop: 0 }}>
-                  <Upload size={15} color={HQ.MENTOR} aria-hidden /> رفع مورد جديد
+                  <Upload size={15} color={HQ.MENTOR} aria-hidden /> رفع مورد جديد للمكتبة العامة
                 </h3>
                 <div className="grid sm:grid-cols-2 gap-4 mb-4">
                   <div>
@@ -316,16 +246,16 @@ export default function AdminResourcesPage() {
             <div style={emptyBox} aria-label="جارٍ تحميل الموارد">
               <RefreshCw size={30} color={HQ.MENTOR} className="animate-spin" style={{ margin: '0 auto' }} aria-hidden />
             </div>
-          ) : resources.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <div style={emptyBox}>
               <FolderOpen size={52} color={HQ.LINE} style={{ margin: '0 auto 12px' }} aria-hidden />
-              <p className="font-bold" style={{ color: HQ.MUTED, margin: 0 }}>لا توجد موارد{categoryFilter !== 'all' ? ` في تصنيف "${CATEGORIES[categoryFilter]?.label}"` : ''}</p>
+              <p className="font-bold" style={{ color: HQ.MUTED, margin: 0 }}>لا توجد موارد{categoryFilter !== 'all' ? ` في تصنيف "${CATEGORIES[categoryFilter]?.label}"` : searchQuery ? ' مطابقة للبحث' : ' في المكتبة بعد'}</p>
             </div>
           ) : (
             <div>
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {resourcesPagination.paginatedItems.map(resource => {
-                  const FIcon = FILE_ICONS[resource.fileType]?.icon || FILE_ICONS.other.icon;
+                  const FIcon = FILE_ICON[resource.fileType] || FILE_ICON.other;
                   const cat = CATEGORIES[resource.category] || CATEGORIES.other;
                   return (
                     <div key={resource._id} className="p-5" style={panel}>

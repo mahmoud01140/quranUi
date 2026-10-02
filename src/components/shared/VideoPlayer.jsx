@@ -318,7 +318,7 @@ export default function VideoPlayer({ url, title, onClose }) {
                 type="button"
                 onClick={() => { setShowPanel(true); setPanelTab('bookmarks'); handleAddBookmark(); }}
                 className="text-xs font-bold flex items-center gap-1 px-2 py-1 rounded-lg"
-                style={{ minHeight: 40, color: '#177B58', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ minHeight: 44, color: '#177B58', background: 'none', border: 'none', cursor: 'pointer' }}
                 title="إضافة مرجعية هنا"
               >
                 <BookmarkPlus className="w-3.5 h-3.5" aria-hidden /> مرجعية
@@ -327,7 +327,7 @@ export default function VideoPlayer({ url, title, onClose }) {
                 type="button"
                 onClick={() => { setShowPanel(true); setPanelTab('notes'); }}
                 className="text-xs font-bold flex items-center gap-1 px-2 py-1 rounded-lg"
-                style={{ minHeight: 40, color: '#177B58', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ minHeight: 44, color: '#177B58', background: 'none', border: 'none', cursor: 'pointer' }}
                 title="إضافة ملاحظة"
               >
                 <StickyNote className="w-3.5 h-3.5" aria-hidden /> ملاحظة
@@ -406,7 +406,7 @@ export default function VideoPlayer({ url, title, onClose }) {
                             onClick={() => removeNote(n.id)}
                             aria-label="حذف الملاحظة"
                             className="inline-flex items-center justify-center"
-                            style={{ minWidth: 40, minHeight: 40, borderRadius: 8, border: 'none', background: 'none', cursor: 'pointer', color: '#C2410C' }}
+                            style={{ minWidth: 44, minHeight: 44, borderRadius: 8, border: 'none', background: 'none', cursor: 'pointer', color: '#C2410C' }}
                           >
                             <Trash2 className="w-3.5 h-3.5" aria-hidden />
                           </button>

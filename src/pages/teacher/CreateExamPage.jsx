@@ -306,7 +306,7 @@ export default function CreateExamPage() {
                 </div>
 
                 {/* Target Type Switcher Tabs */}
-                <div className="hq-tabs" role="tablist" aria-label="نوع التوجيه" style={{ display: 'flex', width: '100%', marginBottom: 20 }}>
+                <div className="hq-tabs m-tabs-col" role="tablist" aria-label="نوع التوجيه" style={{ display: 'flex', width: '100%', marginBottom: 20 }}>
                   {[
                     { key: 'group', label: 'امتحان لمجموعة', Icon: Users, clear: () => { setSelectedLessonId(''); } },
                     { key: 'individual', label: 'امتحان فردي لطالب', Icon: Target, clear: () => {} },
@@ -677,7 +677,7 @@ export default function CreateExamPage() {
                                 {q.type === 'true_false' && (
                                   <div>
                                     <span style={lblSm}>حدد الإجابة الصحيحة لهذا السؤال:</span>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                       <button
                                         type="button"
                                         onClick={() => updateQ(qi, 'correctAnswerBool', true)}
@@ -730,7 +730,7 @@ export default function CreateExamPage() {
                                       <Book size={15} color={HQ.MENTOR} aria-hidden />
                                       <span className="text-sm font-bold" style={{ color: HQ.INK }}>إعدادات المصحف التفاعلي</span>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                       <div>
                                         <label htmlFor={`ce-surah-${qi}`} style={lblSm}>السورة</label>
                                         <select id={`ce-surah-${qi}`} value={q.surahNumber || ''}

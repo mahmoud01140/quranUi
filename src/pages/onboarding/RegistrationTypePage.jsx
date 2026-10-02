@@ -5,6 +5,7 @@ import { BookOpen, Presentation, Users, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import useAuthStore from '../../store/authStore';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import './Onboarding.css';
 
 const TONES = {
@@ -20,7 +21,7 @@ const types = [
     tone: 'mentor',
     title: 'طالب تأسيس',
     desc: 'للمبتدئين والمتوسطين الراغبين في تعلم القراءة والتجويد وحفظ القرآن',
-    features: ['منهج متدرج من الصفر', 'مجموعات دراسية صغيرة', 'جلسات مباشرة تفاعلية', 'خطة ختم مخصصة'],
+    features: ['منهج متدرج من الصفر', 'جلسات فردية مباشرة 1-1', 'جلسات مباشرة تفاعلية', 'خطة ختم مخصصة'],
   },
   {
     id: 'teacher',
@@ -36,7 +37,7 @@ const types = [
     tone: 'neutral',
     title: 'كبار السن',
     desc: 'برنامج خاص بوتيرة هادئة ومناسبة لمتطلبات كبار السن ومساعدتهم في التقنية',
-    features: ['وتيرة دراسية هادئة', 'شاشة وأزرار كبيرة', 'دعم تقني مخصص', 'مجموعات صغيرة ودافئة'],
+    features: ['وتيرة دراسية هادئة', 'شاشة وأزرار كبيرة', 'دعم تقني مخصص', 'اهتمام فردي دافئ'],
   },
 ];
 
@@ -46,20 +47,9 @@ export default function RegistrationTypePage() {
   // Prefill the current choice so a returning student sees where they stand
   const [selected, setSelected] = useState(user?.registrationType || null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSwitchConfirm, setShowSwitchConfirm] = useState(false);
 
-  const handleNext = async () => {
-    if (!selected) { toast.error('الرجاء اختيار نوع التسجيل'); return; }
-    if (!user?._id) { toast.error('انتهت الجلسة. سجل الدخول مجدداً.'); navigate('/login'); return; }
-    // Switching tracks mid-onboarding orphans the saved survey answers and
-    // changes the placement exam — confirm and clean up.
-    if (user.registrationType && user.registrationType !== selected) {
-      if (!window.confirm('تغيير نوع التسجيل سيتجاهل إجابات الاستبيان المحفوظة ويغير امتحان التحديد. هل تريد المتابعة؟')) return;
-      try {
-        Object.keys(localStorage)
-          .filter(k => k.startsWith(`survey_answers_${user._id}_`))
-          .forEach(k => localStorage.removeItem(k));
-      } catch (_) {}
-    }
+  const doNext = async () => {
     setIsLoading(true);
     try {
       await api.put(`/users/${user._id}`, { registrationType: selected });
@@ -70,6 +60,28 @@ export default function RegistrationTypePage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleNext = async () => {
+    if (!selected) { toast.error('الرجاء اختيار نوع التسجيل'); return; }
+    if (!user?._id) { toast.error('انتهت الجلسة. سجل الدخول مجدداً.'); navigate('/login'); return; }
+    // Switching tracks mid-onboarding orphans the saved survey answers and
+    // changes the placement exam — confirm and clean up.
+    if (user.registrationType && user.registrationType !== selected) {
+      setShowSwitchConfirm(true);
+      return;
+    }
+    await doNext();
+  };
+
+  const confirmSwitch = async () => {
+    setShowSwitchConfirm(false);
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith(`survey_answers_${user._id}_`))
+        .forEach(k => localStorage.removeItem(k));
+    } catch (_) {}
+    await doNext();
   };
 
   return (
@@ -142,7 +154,7 @@ export default function RegistrationTypePage() {
             })}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="m-cta-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <button
               type="button"
               onClick={() => navigate('/')}
@@ -160,6 +172,17 @@ export default function RegistrationTypePage() {
             </button>
           </div>
         </div>
+
+        {/* Switch track confirm */}
+        <ConfirmModal
+          open={showSwitchConfirm}
+          title="تغيير نوع التسجيل؟"
+          message="سيتجاهل إجابات الاستبيان المحفوظة ويغير امتحان التحديد."
+          confirmLabel="متابعة"
+          busy={isLoading}
+          onConfirm={confirmSwitch}
+          onClose={() => setShowSwitchConfirm(false)}
+        />
       </div>
     </MotionConfig>
   );

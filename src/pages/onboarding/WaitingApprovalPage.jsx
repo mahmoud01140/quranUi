@@ -10,24 +10,24 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import useSocket from '../../hooks/useSocket';
 import api from '../../services/api';
-import { getLevelLabel } from '../../utils/helpers';
+import { getLevelLabel, formatTime12Ar } from '../../utils/helpers';
 import './Onboarding.css';
 
 const FAQS = [
   {
-    q: 'كم يستغرق تدقيق التلاوة وتسكيني في الحلقة؟',
-    a: 'تستغرق المراجعة عادة بين ساعتين إلى 24 ساعة كحد أقصى؛ حيث يستمع أحد المقرئين المتخصصين لتسجيلاتك الشفهية بعناية لتحديد المستوى الأدق، ثم اختيار أنسب حلقة تناسب جدولك ومستواك.',
+    q: 'كم يستغرق تدقيق التلاوة وجدولة حصصي؟',
+    a: 'تستغرق المراجعة عادة بين ساعتين إلى 24 ساعة كحد أقصى؛ حيث يستمع أحد المقرئين المتخصصين لتسجيلاتك الشفهية بعناية لتحديد المستوى الأدق، ثم جدولة حصصك بما يناسب جدولك ومستواك.',
   },
   {
     q: 'متى يبدأ سداد الاشتراك ورسوم التحفيظ؟',
-    a: 'لا يوجد أي سداد مطلوب الآن! حسابك يبدأ بحصة تجريبية مجانية بعد التسكين مباشرة لتتعرف على معلمك وأسلوب الحلقة قبل أي التزام مالي.',
+    a: 'لا يوجد أي سداد مطلوب الآن! حسابك يبدأ بحصة تجريبية مجانية بعد اعتماد مستواك مباشرة لتتعرف على معلمك وأسلوب الحصة قبل أي التزام مالي.',
   },
   {
-    q: 'ماذا لو كان موعد الحلقة المسكّن بها غير مناسب لجدولي؟',
-    a: 'يمكنك بكل سهولة وبضغطة زر طلب تغيير موعد حلقتك بالتواصل المباشر مع إدارة التسكين لاختيار موعد بديل يناسب أوقات فراغك.',
+    q: 'ماذا لو كان موعد حصتي غير مناسب لجدولي؟',
+    a: 'يمكنك بكل سهولة وبضغطة زر طلب تغيير موعد حصتك بالتواصل المباشر مع الإدارة لاختيار موعد بديل يناسب أوقات فراغك.',
   },
   {
-    q: 'كيف سأعرف عندما تنتهي المراجعة ويتم تسكيني؟',
+    q: 'كيف سأعرف عندما تنتهي المراجعة ويتم اعتماد مستواي؟',
     a: 'ستصلك رسالة فورية عبر بريدك الإلكتروني المسجل، وإشعار على هاتفك أو متصفحك، كما تتحدث هذه الصفحة تلقائياً باللحظة دون الحاجة لإعادة تحميلها.',
   },
 ];
@@ -51,13 +51,9 @@ export default function WaitingApprovalPage() {
     notification: async (notif) => {
       toast.success(notif?.title || 'تحديث جديد بخصوص مراجعة حسابك');
       const fresh = await refreshUser();
-      if (fresh?.assignedLevel && fresh?.group) {
-        toast.success('مبارك! تم تسكينك في مجموعتك بنجاح 🎉');
+      if (fresh?.assignedLevel) {
+        toast.success('مبارك! تم اعتماد مستواك بنجاح 🎉');
       }
-    },
-    'group-assigned': async (data) => {
-      toast.success(`🎉 مبارك! تم تعيينك في ${data?.groupName || 'مجموعتك'}`);
-      await refreshUser();
     },
   });
 
@@ -76,8 +72,8 @@ export default function WaitingApprovalPage() {
     try {
       const fresh = await refreshUser();
       await checkAuth();
-      if (fresh?.assignedLevel && fresh?.group) {
-        toast.success('تم تسكينك في حلقتك بنجاح!');
+      if (fresh?.assignedLevel && fresh?.scheduleDays?.length) {
+        toast.success('تم اعتماد مستواك وجدولة حصصك بنجاح!');
       } else if (fresh?.assignedLevel) {
         toast.success(`تم اعتماد مستواك: ${getLevelLabel(fresh.assignedLevel)}`);
       } else {
@@ -119,7 +115,7 @@ export default function WaitingApprovalPage() {
   };
 
   const hasLevel = Boolean(user?.assignedLevel);
-  const hasGroup = Boolean(user?.group?._id || user?.group);
+  const hasSchedule = Boolean(user?.scheduleDays?.length);
   const levelLabel = hasLevel ? getLevelLabel(user.assignedLevel) : null;
   const recordingsCount = user?.oralExamRecordings?.length || 0;
 
@@ -133,28 +129,30 @@ export default function WaitingApprovalPage() {
     },
     {
       id: 2,
-      title: 'مراجعة المقرئ لتلاوتك',
-      detail: hasLevel ? 'تم الاستماع وتدقيق التجويد والمخارج بنجاح' : 'يستمع أحد المقرئين المعتمدين لتسجيلك بعناية الآن',
+      title: 'مراجعة تلاوتك واعتماد المستوى',
+      detail: hasLevel ? `المستوى المعتمد: ${levelLabel}` : 'يستمع المقرئ لتسجيلك الشفهي بعناية لتحديد المستوى',
       done: hasLevel,
       current: !hasLevel,
     },
     {
       id: 3,
-      title: 'اعتماد المستوى الدراسي',
-      detail: hasLevel ? `المستوى المعتمد: ${levelLabel}` : 'تحديد المرحلة القرآنية الأنسب لقدراتك',
-      done: hasLevel,
-      current: !hasLevel,
+      title: 'جدولة مواعيد البث المباشر الفردي',
+      detail: hasSchedule
+        ? `أيام البث: ${user.scheduleDays.join('، ')} ${user.sessionTime ? `(الساعة ${formatTime12Ar(user.sessionTime)})` : ''}`
+        : hasLevel
+        ? 'يقوم المشرف حالياً بتحديد أيام وساعة جلسات البث المباشر معك'
+        : 'جدولة الحصص المباشرة بعد اعتماد المستوى',
+      done: hasSchedule,
+      current: hasLevel && !hasSchedule,
     },
     {
       id: 4,
-      title: 'التسكين في الحلقة والمجموعة',
-      detail: hasGroup
-        ? `تم تسكينك في: ${user?.group?.name || 'مجموعتك القرآنية'}`
-        : hasLevel
-        ? 'فريق الإشراف يختار لك أفضل حلقة ومعلم تناسب أوقاتك'
-        : 'اختيار جدول الحصص بعد اعتماد المستوى',
-      done: hasGroup,
-      current: hasLevel && !hasGroup,
+      title: 'جاهزية البث المباشر والمنهج',
+      detail: hasLevel
+        ? 'حسابك معتمد وجاهز؛ سيبدأ المشرف بث الحصة معك في موعدك المحدد'
+        : 'بدء الجلسات المباشرة بعد الاعتماد والجدولة',
+      done: hasLevel && hasSchedule,
+      current: hasLevel && hasSchedule,
     },
   ];
 
@@ -168,7 +166,7 @@ export default function WaitingApprovalPage() {
             <div className="flex items-center gap-2">
               <span className="onb-pulse-dot" aria-hidden />
               <span className="text-xs font-bold" style={{ color: '#0F5940' }}>
-                متابعة التسكين اللحظية المباشرة
+                متابعة الاعتماد اللحظية المباشرة
               </span>
             </div>
             <button
@@ -193,11 +191,9 @@ export default function WaitingApprovalPage() {
               width: 76,
               height: 76,
               borderRadius: 22,
-              background: hasGroup ? '#E2EFE7' : hasLevel ? '#ECE9F4' : '#E2EFE7',
+              background: hasLevel ? '#ECE9F4' : '#E2EFE7',
             }}>
-              {hasGroup ? (
-                <Sparkles size={38} style={{ color: '#177B58' }} />
-              ) : hasLevel ? (
+              {hasLevel ? (
                 <ShieldCheck size={38} style={{ color: '#4A3F6B' }} />
               ) : (
                 <Clock size={38} style={{ color: '#177B58' }} />
@@ -206,9 +202,7 @@ export default function WaitingApprovalPage() {
 
             {/* Main Title & Subtitle */}
             <h1 className="font-extrabold mb-2" style={{ fontSize: '1.65rem', color: '#2A2438' }}>
-              {hasGroup ? (
-                `مبارك يا ${user?.firstName || 'طالبنا'}! اكتمل تسكينك في حلقتك`
-              ) : hasLevel ? (
+              {hasLevel ? (
                 `مبارك يا ${user?.firstName || 'طالبنا'}! تم اعتماد مستواك`
               ) : (
                 `أهلاً بك يا ${user?.firstName || 'طالبنا'} — طلبك قيد المراجعة`
@@ -216,15 +210,13 @@ export default function WaitingApprovalPage() {
             </h1>
 
             <p className="mb-6 max-w-lg mx-auto text-sm" style={{ color: '#756E85', lineHeight: 1.8 }}>
-              {hasGroup ? (
-                `تم ضمك رسمياً إلى ${user?.group?.name || 'مجموعتك'}، ومقعدك جاهز الآن مع معلمك وزملائك.`
-              ) : hasLevel ? (
+              {hasLevel ? (
                 <span>
-                  تم اعتماد مستواك رسمياً: <strong style={{ color: '#0F5940' }}>{levelLabel}</strong>. 
-                  نحن الآن في الخطوة الأخيرة لتسكينك مع معلمك في الموعد الأنسب.
+                  تم اعتماد مستواك رسمياً: <strong style={{ color: '#0F5940' }}>{levelLabel}</strong>.
+                  نحن الآن في الخطوة الأخيرة لجدولة حصصك المباشرة مع معلمك في الموعد الأنسب.
                 </span>
               ) : (
-                'لقد أتممت الاختبار بنجاح! يستمع أحد المقرئين المعتمدين لتلاوتك الشفهية لتحديد مستواك الدقيق وتسكينك في أفضل حلقة.'
+                'لقد أتممت الاختبار بنجاح! يستمع أحد المقرئين المعتمدين لتلاوتك الشفهية لتحديد مستواك الدقيق وجدولة حصصك المباشرة.'
               )}
             </p>
 
@@ -238,7 +230,7 @@ export default function WaitingApprovalPage() {
                   style={{ fontSize: '1.05rem', padding: '14px 28px' }}
                 >
                   <BookOpen className="w-5 h-5" aria-hidden />
-                  {hasGroup ? 'الدخول إلى حلقتي ومجموعتي الآن' : 'الدخول إلى لوحة الطالب وتصفح المصحف'}
+                  الدخول إلى لوحة الطالب وتصفح المصحف
                   <ArrowLeft className="w-4 h-4 mr-1" aria-hidden />
                 </button>
               </div>
@@ -247,9 +239,9 @@ export default function WaitingApprovalPage() {
             {/* 4-Step Interactive Timeline */}
             <div className="rounded-2xl p-5 mb-6 text-right" style={{ background: '#FBF7EE' }}>
               <div className="flex items-center justify-between mb-4 pb-2 border-b" style={{ borderColor: '#E8E2D4' }}>
-                <span className="text-xs font-bold" style={{ color: '#2A2438' }}>مسار اعتماد وتسكين الطالب</span>
+                <span className="text-xs font-bold" style={{ color: '#2A2438' }}>مسار اعتماد الطالب وجدولة حصصه</span>
                 <span className="text-xs font-semibold" style={{ color: '#177B58' }}>
-                  {hasGroup ? 'مكتمل 100%' : hasLevel ? 'الخطوة 4 من 4 (75%)' : 'الخطوة 2 من 4 (35%)'}
+                  {hasLevel ? 'الخطوة 4 من 4 (75%)' : 'الخطوة 2 من 4 (35%)'}
                 </span>
               </div>
 
@@ -304,7 +296,7 @@ export default function WaitingApprovalPage() {
               <div className="flex-1">
                 <p className="text-sm font-bold mb-1" style={{ color: '#2A2438' }}>قنوات إشعارك الفورية</p>
                 <p className="text-xs leading-relaxed" style={{ color: '#756E85' }}>
-                  فور اعتماد تلاوتك وتسكينك، سنرسل لك إشعاراً فورياً على بريدك المسجل:
+                  فور اعتماد مستواك وجدولة حصصك، سنرسل لك إشعاراً فورياً على بريدك المسجل:
                   <strong className="block mt-0.5 text-xs" style={{ color: '#2A2438', direction: 'ltr', textAlign: 'right' }}>
                     {user?.email}
                   </strong>
@@ -373,11 +365,11 @@ export default function WaitingApprovalPage() {
                         هذه التسجيلات الصوتية التي يستمع إليها المعلم حالياً لتقييم مخارج الحروف وأحكام التجويد:
                       </p>
                       {user.oralExamRecordings.map((url, idx) => (
-                        <div key={idx} className="onb-audio-chip flex items-center justify-between">
+                        <div key={idx} className="onb-audio-chip flex flex-col items-stretch gap-2">
                           <span className="text-xs font-bold" style={{ color: '#2A2438' }}>
                             المقطع الصوتي {idx + 1}
                           </span>
-                          <audio controls src={url} style={{ height: 32, maxWidth: 220 }} />
+                          <audio controls src={url} style={{ height: 36, width: '100%' }} />
                         </div>
                       ))}
                     </motion.div>
@@ -387,6 +379,16 @@ export default function WaitingApprovalPage() {
             )}
 
             {/* Action Buttons */}
+            {hasLevel && (
+              <button
+                type="button"
+                onClick={() => navigate('/student')}
+                className="onb-btn-primary w-full justify-center mb-3"
+                style={{ background: '#177B58', color: '#fff', padding: '14px', borderRadius: 12, fontWeight: 800, fontSize: 15 }}
+              >
+                الدخول إلى لوحة المنهج والدراسة 🚀
+              </button>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 type="button"
@@ -459,7 +461,7 @@ export default function WaitingApprovalPage() {
             <div className="flex items-center gap-2 mb-4">
               <HelpCircle size={18} style={{ color: '#177B58' }} />
               <h2 className="text-base font-extrabold" style={{ color: '#2A2438', margin: 0 }}>
-                الأسئلة الشائعة حول التسكين والمراجعة
+                الأسئلة الشائعة حول الاعتماد والمراجعة
               </h2>
             </div>
 
@@ -495,15 +497,15 @@ export default function WaitingApprovalPage() {
               هل لديك استفسار عاجل بخصوص أوقات الحلقات؟
             </p>
             <p className="text-xs mb-3" style={{ color: '#756E85' }}>
-              فريق التسكين متاح للإجابة على أي ظرف خاص بجدولك الزمني.
+              فريق الدعم متاح للإجابة على أي ظرف خاص بجدولك الزمني.
             </p>
             <a
-              href="mailto:support@livequran.app?subject=استفسار بخصوص تسكين الحلقة"
+              href="mailto:support@livequran.app?subject=استفسار بخصوص موعد الحصة"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold"
               style={{ background: '#FBF7EE', border: '1px solid #E8E2D4', color: '#177B58' }}
             >
               <MessageCircle size={14} />
-              مراسلة إدارة الحلقات والتسكين
+              مراسلة الإدارة بخصوص المواعيد
             </a>
           </div>
 

@@ -163,8 +163,8 @@ export default function ResultPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {[
                 'مراجعة المعلم لتسجيلاتك خلال 24 ساعة',
-                'تسكينك في مجموعة تناسب مستواك',
-                'منهجك الدراسي يظهر داخل مجموعتك',
+                'اعتماد مستواك وجدولة حصصك الفردية',
+                'حصصك ودروسك تظهر في لوحتك الخاصة',
                 'ابدأ من الآن بتصفح المصحف',
               ].map((step, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm rounded-xl px-3 py-2" style={{ color: '#2A2438', background: '#FBF7EE' }}>

@@ -82,7 +82,7 @@ export default function RegisterPage() {
             {/* Account Type Selection */}
             <div>
               <span id="role-label" className="auth-label">نوع الحساب *</span>
-              <div className="grid grid-cols-2 gap-3" role="group" aria-labelledby="role-label">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="group" aria-labelledby="role-label">
                 <button
                   type="button"
                   onClick={() => setForm(p => ({ ...p, role: 'student' }))}
@@ -105,7 +105,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Name row */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="reg-firstName" className="auth-label">الاسم الأول *</label>
                 <input
@@ -187,7 +187,7 @@ export default function RegisterPage() {
             </div>
 
             {/* Phone & Country */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="reg-phone" className="auth-label">الهاتف</label>
                 <input
@@ -212,7 +212,7 @@ export default function RegisterPage() {
             </div>
 
             {/* DOB & Gender */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label htmlFor="reg-dob" className="auth-label">تاريخ الميلاد</label>
                 <input

@@ -28,7 +28,6 @@ export default function ProtectedRoute({ children, role }) {
     !!user &&
     user.role === 'student' &&
     !!user.assignedLevel &&
-    !!(user.group?._id || user.group) &&
     isStudentRoute &&
     !isSubExempt;
 

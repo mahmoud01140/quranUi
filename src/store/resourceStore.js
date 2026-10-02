@@ -13,6 +13,18 @@ const useResourceStore = create((set) => ({
     } catch { set({ isLoading: false }); }
   },
 
+  fetchGeneralResources: async (params = {}) => {
+    set({ isLoading: true });
+    try {
+      const res = await api.get('/resources/general', { params });
+      set({ resources: res.data.resources || [], isLoading: false });
+      return res.data.resources || [];
+    } catch (err) {
+      set({ isLoading: false });
+      throw err;
+    }
+  },
+
   uploadResource: async (formData) => {
     const res = await api.post('/resources', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

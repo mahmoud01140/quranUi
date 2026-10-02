@@ -409,7 +409,7 @@ export default function AdminPaymentsPage() {
                         aria-pressed={statusFilter === st.id}
                         className="px-3 rounded-lg"
                         style={{
-                          minHeight: 40, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.8125rem',
+                          minHeight: 44, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.8125rem',
                           background: statusFilter === st.id ? HQ.MENTOR : 'transparent',
                           color: statusFilter === st.id ? '#fff' : HQ.MUTED, fontVariantNumeric: 'tabular-nums',
                         }}
@@ -433,7 +433,7 @@ export default function AdminPaymentsPage() {
                         aria-pressed={methodFilter === m.id}
                         className="px-3 rounded-lg"
                         style={{
-                          minHeight: 40, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.8125rem',
+                          minHeight: 44, border: 'none', cursor: 'pointer', fontWeight: 800, fontSize: '0.8125rem',
                           background: methodFilter === m.id ? HQ.MENTOR : 'transparent',
                           color: methodFilter === m.id ? '#fff' : HQ.MUTED,
                         }}
@@ -488,7 +488,7 @@ export default function AdminPaymentsPage() {
 
                           return (
                             <tr key={payment._id}>
-                              <td>
+                              <td data-label="الطالب">
                                 <div className="flex items-center gap-3">
                                   <span aria-hidden className="avatar-circle"
                                     style={{
@@ -504,7 +504,7 @@ export default function AdminPaymentsPage() {
                                 </div>
                               </td>
 
-                              <td>
+                              <td data-label="الباقة والمدة">
                                 <span style={{
                                   display: 'inline-flex', alignItems: 'center', padding: '4px 12px', borderRadius: 9999,
                                   fontSize: '0.8125rem', fontWeight: 800, background: HQ.PAPER, color: HQ.INK,
@@ -519,11 +519,11 @@ export default function AdminPaymentsPage() {
                                 </span>
                               </td>
 
-                              <td className="font-black" style={{ color: HQ.INK, fontVariantNumeric: 'tabular-nums' }}>
+                              <td data-label="المبلغ" className="font-black" style={{ color: HQ.INK, fontVariantNumeric: 'tabular-nums' }}>
                                 {payment.amount} {payment.currency === 'EGP' ? 'ج.م' : 'ر.س'}
                               </td>
 
-                              <td>
+                              <td data-label="طريقة التحويل">
                                 <span style={{
                                   display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 9999,
                                   fontSize: '0.8125rem', fontWeight: 800, background: HQ.PAPER, color: HQ.INK,
@@ -535,7 +535,7 @@ export default function AdminPaymentsPage() {
                                 </span>
                               </td>
 
-                              <td className="text-xs">
+                              <td data-label="بيانات المحول" className="text-xs">
                                 <p className="font-bold" style={{ color: HQ.INK, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
                                   {payment.senderPhone || payment.senderName || '—'}
                                 </p>
@@ -546,7 +546,7 @@ export default function AdminPaymentsPage() {
                                 )}
                               </td>
 
-                              <td>
+                              <td data-label="إيصال التحويل">
                                 {payment.receiptUrl ? (
                                   <button
                                     type="button"
@@ -567,7 +567,7 @@ export default function AdminPaymentsPage() {
                                 )}
                               </td>
 
-                              <td>
+                              <td data-label="الحالة">
                                 {statusChip(payment.status)}
                                 {payment.status === 'rejected' && payment.rejectionReason && (
                                   <p className="mt-1 truncate" title={payment.rejectionReason}
@@ -577,7 +577,7 @@ export default function AdminPaymentsPage() {
                                 )}
                               </td>
 
-                              <td className="text-center">
+                              <td data-label="الإجراءات" className="text-center m-actions">
                                 {payment.status === 'pending' ? (
                                   <div className="flex items-center justify-center gap-2">
                                     <button
@@ -1046,7 +1046,7 @@ export default function AdminPaymentsPage() {
               <div className="space-y-4 mb-6">
                 <div>
                   <span style={lblSm} id="pay-days-label">مدة الاشتراك الممنوحة بالأيام:</span>
-                  <div className="grid grid-cols-3 gap-2" role="group" aria-labelledby="pay-days-label">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" role="group" aria-labelledby="pay-days-label">
                     {[
                       { days: 30, label: '30 يوماً' },
                       { days: 90, label: '90 يوماً' },
@@ -1155,7 +1155,7 @@ export default function AdminPaymentsPage() {
                     aria-pressed={rejectReason === reasonText}
                     className="font-medium"
                     style={{
-                      fontSize: '0.8125rem', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', minHeight: 40,
+                      fontSize: '0.8125rem', padding: '8px 12px', borderRadius: 8, cursor: 'pointer', minHeight: 44,
                       background: rejectReason === reasonText ? '#C2410C' : HQ.PAPER,
                       color: rejectReason === reasonText ? '#fff' : HQ.INK,
                       border: `1px solid ${rejectReason === reasonText ? '#C2410C' : HQ.LINE}`,

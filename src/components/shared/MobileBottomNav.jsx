@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookOpen, Video, FileText, TrendingUp,
-  Users, ClipboardList, BarChart2, BookMarked, Volume2,
+  Users, ClipboardList, BarChart2, BookMarked, Volume2, CreditCard,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import '../../components/halaqa/halaqa.css';
@@ -10,19 +10,20 @@ import { HQ } from '../../components/halaqa/primitives';
 
 const studentNavItems = [
   { to: '/student', icon: LayoutDashboard, label: 'المطلوب اليوم', end: true },
-  { to: '/student/curriculum', icon: BookOpen, label: 'المنهج والدروس' },
+  { to: '/student/curriculum', icon: BookOpen, label: 'الحصص' },
   { to: '/student/quran', icon: BookMarked, label: 'المصحف' },
+  { to: '/student/subscription', icon: CreditCard, label: 'الاشتراك' },
 ];
 
 const teacherNavItems = [
   { to: '/teacher', icon: LayoutDashboard, label: 'الرئيسية', end: true },
-  { to: '/teacher/groups', icon: Users, label: 'مجموعاتي' },
+  { to: '/teacher/exams', icon: FileText, label: 'الامتحانات' },
   { to: '/teacher/review', icon: ClipboardList, label: 'التصحيح' },
 ];
 
 const adminNavItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'الرئيسية', end: true },
-  { to: '/admin/groups', icon: BookMarked, label: 'الحلقات' },
+  { to: '/admin/pending', icon: ClipboardList, label: 'الانتظار' },
   { to: '/admin/exams', icon: FileText, label: 'الامتحانات' },
   { to: '/admin/users', icon: Users, label: 'الطلاب' },
 ];
@@ -40,6 +41,8 @@ export default function MobileBottomNav() {
   // Hide bottom nav during exam taking or onboarding flows for maximum focus
   const isTakingExam = location.pathname.includes('/take') || location.pathname.startsWith('/onboarding');
   if (isTakingExam) return null;
+  // Quran page has its own fixed audio player — avoid double fixed bars
+  if (location.pathname.startsWith('/student/quran')) return null;
 
   const items = user.role === 'admin' ? adminNavItems
     : user.role === 'teacher' ? teacherNavItems

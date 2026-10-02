@@ -7,6 +7,7 @@ import {
   SkipForward, SkipBack, Repeat, Loader2, Check, X, Lock, Info, Star,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import Navbar from '../../components/shared/Navbar';
 import useExamStore from '../../store/examStore';
 import useAuthStore from '../../store/authStore';
@@ -48,6 +49,7 @@ export default function TakeExamPage() {
   const [loadingVerses, setLoadingVerses] = useState(false);
   const [quranMode, setQuranMode] = useState({}); // { [questionIndex]: 'practice' | 'quiz' }
   const [showQuranPanel, setShowQuranPanel] = useState(true);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   // Quran Audio hook
   const audio = useQuranAudio();
@@ -61,9 +63,7 @@ export default function TakeExamPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        // Assigned exams can target the student individually, their group, or
-        // their level — so look in the unified assigned list FIRST, then fall
-        // back to the legacy group-only endpoint.
+        // القائمة الموحدة تكفي للنظام الفردي (فردي/مستوى) — ثم احتياطي المجموعة عند وجودها فقط
         let exam = null;
         try {
           const assignedRes = await api.get('/exams/student/assigned');
@@ -71,8 +71,10 @@ export default function TakeExamPage() {
         } catch (_) {}
         if (!exam) {
           const groupId = user?.group?._id || user?.group;
-          const res = await api.get(`/exams/group/${groupId || 'none'}`);
-          exam = (res.data.exams || []).find(e => e._id === examId);
+          if (groupId) {
+            const res = await api.get(`/exams/group/${groupId}`);
+            exam = (res.data.exams || []).find(e => e._id === examId);
+          }
         }
         if (!exam) {
           toast.error('لم يتم العثور على الامتحان');
@@ -204,7 +206,18 @@ export default function TakeExamPage() {
   };
 
   const handleSubmit = async (auto = false) => {
-    if (!auto && !window.confirm('هل أنت متأكد من تسليم الامتحان؟')) return;
+    if (!auto) {
+      // أسئلة التسميع تتطلب تسجيلاً — وإلا علقت النتيجة بلا مراجعة
+      const recQs = (currentExam?.questions || []).filter(q => q.type === 'recitation');
+      const recordedIds = new Set((oralRecordings || []).filter(r => r.audioBlob).map(r => String(r.questionId)));
+      const missingRec = recQs.filter(q => !recordedIds.has(String(q._id)));
+      if (missingRec.length) {
+        toast.error(`سجل تلاوتك الصوتية لجميع أسئلة التسميع أولاً (متبقٍ ${missingRec.length})`);
+        return;
+      }
+      if (!showSubmitConfirm) { setShowSubmitConfirm(true); return; }
+      setShowSubmitConfirm(false);
+    }
     try {
       stopAudio();
       const res = await submitWrittenExam(examId);
@@ -353,9 +366,9 @@ export default function TakeExamPage() {
           {/* Progress bar */}
           <div style={{ background: HQ.SURFACE, borderBottom: `1px solid ${HQ.LINE}`, padding: '10px 16px' }}>
             <div className="max-w-4xl mx-auto">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-bold truncate" style={{ color: HQ.INK, maxWidth: 200 }}>{currentExam.title}</span>
-                <div className="flex items-center gap-2">
+              <div className="flex justify-between items-center mb-2" style={{ flexWrap: 'wrap', gap: 8 }}>
+                <span className="text-sm font-bold truncate" style={{ color: HQ.INK, maxWidth: 140 }}>{currentExam.title}</span>
+                <div className="flex items-center gap-2" style={{ flexWrap: 'wrap' }}>
                   {timeLeft !== null && (
                     <span role="timer" aria-label="الوقت المتبقي للامتحان"
                       style={{
@@ -732,6 +745,16 @@ export default function TakeExamPage() {
           </div>
         </div>
       </div>
+
+      {/* Submit confirm */}
+      <ConfirmModal
+        open={showSubmitConfirm}
+        title="تسليم الامتحان؟"
+        message="بعد التسليم لن تتمكن من تعديل إجاباتك."
+        confirmLabel="تسليم"
+        onConfirm={() => handleSubmit(false)}
+        onClose={() => setShowSubmitConfirm(false)}
+      />
     </MotionConfig>
   );
 }

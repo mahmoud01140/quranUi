@@ -7,6 +7,7 @@ import useAuthStore from '../../store/authStore';
 import useExamStore from '../../store/examStore';
 import useMediaRecorder from '../../hooks/useMediaRecorder';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import { formatCountdown } from '../../utils/helpers';
 import './Onboarding.css';
 
@@ -62,6 +63,7 @@ export default function OralExamPage() {
   const [currentTask, setCurrentTask] = useState(0);
   const [completed, setCompleted] = useState({});
   const [taskSeconds, setTaskSeconds] = useState({});
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const {
     isRecording, duration, audioUrl, audioBlob, error,
@@ -91,8 +93,13 @@ export default function OralExamPage() {
   const switchTask = (next) => {
     if (next === currentTask) return;
     if (hasUnsavedRecording && !completed[currentTask]) {
-      if (!window.confirm('لديك تسجيل غير محفوظ لهذه المهمة وسيضيع. هل تريد الانتقال؟')) return;
+      setShowLeaveConfirm(true);
+      return;
     }
+    doSwitchTask(next);
+  };
+
+  const doSwitchTask = (next) => {
     setCurrentTask(next);
     resetRecording();
   };
@@ -101,6 +108,10 @@ export default function OralExamPage() {
     const examId = currentExam?._id || contextExamId;
     if (!examId) {
       toast.error('تعذر تحديد الامتحان. أعد تحميل الصفحة وحاول مجدداً.');
+      return;
+    }
+    if (!tasks.length || Object.keys(completed).length < tasks.length) {
+      toast.error('سجل جميع المهام الصوتية أولاً قبل الرفع');
       return;
     }
     const finalResultId = resultId || placementResult?._id || result?._id;
@@ -408,6 +419,16 @@ export default function OralExamPage() {
           </div>
 
         </div>
+
+        {/* Unsaved recording confirm */}
+        <ConfirmModal
+          open={showLeaveConfirm}
+          title="تسجيل غير محفوظ"
+          message="لديك تسجيل غير محفوظ لهذه المهمة وسيضيع عند الانتقال."
+          confirmLabel="انتقال"
+          onConfirm={() => { setShowLeaveConfirm(false); doSwitchTask(currentTask + 1); }}
+          onClose={() => setShowLeaveConfirm(false)}
+        />
       </div>
     </MotionConfig>
   );

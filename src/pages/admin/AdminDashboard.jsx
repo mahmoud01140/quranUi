@@ -9,7 +9,7 @@ import { HQ } from '../../components/halaqa/primitives';
 /* لوحة الإدارة — clarity, honest density, fast action. */
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ users: 0, groups: 0, pending: 0, attendance: '0%' });
+  const [stats, setStats] = useState({ users: 0, pending: 0, attendance: '0%' });
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -22,20 +22,17 @@ export default function AdminDashboard() {
         const data = res.data;
         setStats({
           users: data.summary.totalUsers || 0,
-          groups: data.summary.activeGroups || 0,
           pending: data.summary.pendingApproval || 0,
           attendance: data.summary.attendanceRate || '0%',
         });
       } catch (_) {
         try {
-          const [usersRes, groupsRes, pendingRes] = await Promise.all([
+          const [usersRes, pendingRes] = await Promise.all([
             api.get('/users', { params: { limit: 1 } }),
-            api.get('/groups'),
             api.get('/users/pending-approval'),
           ]);
           setStats({
             users: usersRes.data.total || 0,
-            groups: groupsRes.data.groups?.length || 0,
             pending: pendingRes.data.users?.length || 0,
             attendance: '—',
           });
@@ -77,15 +74,14 @@ export default function AdminDashboard() {
               style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 20, marginBottom: 16 }}>
               <div className="hq-facts" style={{ marginBottom: stats.pending > 0 ? 12 : 0 }}>
                 <span><strong>{stats.users}</strong> <span>مستخدم</span></span>
-                <span><strong>{stats.groups}</strong> <span>مجموعة نشطة</span></span>
                 <span><strong>{stats.attendance}</strong> <span>حضور</span></span>
               </div>
               {stats.pending > 0 && (
-                <Link to="/admin/users"
+                <Link to="/admin/pending"
                   style={{ display: 'flex', alignItems: 'center', gap: 10, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '12px 14px', textDecoration: 'none', minHeight: 56 }}>
                   <span className="hq-live-dot" aria-hidden style={{ background: '#C2410C', animation: 'none', opacity: 1 }} />
                   <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: HQ.INK }}>
-                    {stats.pending} بانتظار الموافقة والتسكين
+                    {stats.pending} بانتظار تحديد المستوى والجدولة
                   </span>
                   <ChevronLeft size={18} color={HQ.MUTED} />
                 </Link>
@@ -95,11 +91,11 @@ export default function AdminDashboard() {
             {/* Fast actions */}
             <section aria-label="إجراءات سريعة">
               {[
-                { label: 'إدارة وتسكين الحلقات', hint: 'المجموعات والطلاب الجدد', path: '/admin/groups', icon: BookOpen, primary: true },
+                { label: 'بانتظار تحديد المستوى', hint: 'الطلاب الجدد والجدولة', path: '/admin/pending', icon: BookOpen, primary: true },
                 { label: 'إدارة الطلاب والمستخدمين', hint: 'الاعتماد وتفاصيل الحسابات', path: '/admin/users', icon: Users },
                 { label: 'بنك الامتحانات', hint: 'إدارة ونتائج', path: '/admin/exams', icon: FileText },
                 { label: 'المدفوعات', hint: 'الإيصالات والاشتراكات', path: '/admin/payments', icon: Users },
-                { label: 'البث المباشر', hint: 'بدء حصة', path: '/admin/groups', icon: Video },
+                { label: 'مواعيد الحصص', hint: 'جدول البث وبدء حصة', path: '/admin/schedule', icon: Video },
               ].map((a) => (
                 <Link key={a.label} to={a.path}
                   style={{

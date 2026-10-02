@@ -159,6 +159,7 @@ export default function LessonContent({ content }) {
               <button
                 onClick={() => handlePlayAudio(phrase)}
                 className="w-6 h-6 rounded-full flex items-center justify-center"
+                aria-label={isPlaying ? "إيقاف مثال العفاسي" : "استماع لمثال العفاسي"}
                 style={{ background: isPlaying ? '#177B58' : '#E2EFE7', color: isPlaying ? '#fff' : '#177B58' }}
                 title={isPlaying ? "إيقاف مؤقت" : "استمع للمثال بصوت العفاسي"}
               >

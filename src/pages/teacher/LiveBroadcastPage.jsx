@@ -1,114 +1,111 @@
-import { useState, useEffect, useRef } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  Radio, ClipboardList, PhoneOff, UserCheck, Mic, BookOpen,
-  CheckCircle, AlertCircle, ArrowRight, VideoOff
+  PhoneOff, UserCheck, BookOpen,
+  MessageSquare, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/shared/Navbar';
 import JitsiMeeting from '../../components/shared/JitsiMeeting';
 import LiveAttendanceDrawer from '../../components/shared/LiveAttendanceDrawer';
-import LiveRecitationDrawer from '../../components/shared/LiveRecitationDrawer';
 import useAuthStore from '../../store/authStore';
-import useGroupStore from '../../store/groupStore';
 import useLiveStore from '../../store/liveStore';
 import { getSocket } from '../../services/socket';
 import api from '../../services/api';
 import { formatCountdown } from '../../utils/helpers';
+import ConfirmModal from '../../components/shared/ConfirmModal';
+import WirdAssignModal from '../../components/shared/WirdAssignModal';
+import MushafSharePanel from '../../components/shared/MushafSharePanel';
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import '../../components/halaqa/halaqa.css';
 import { HQ } from '../../components/halaqa/primitives';
+
+/* غرفة البث الفردي — النظام فردي بالكامل: بث 1-on-1 مع طالب واحد.
+   تُفتح فقط من زر "بدء بث مباشر" (ينشئ الجلسة والدرس ثم يمرر البيانات). */
 
 export default function LiveBroadcastPage() {
   const { user } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
-  const { groups, fetchAllGroups } = useGroupStore();
   const {
     isBroadcasting,
     setIsBroadcasting,
     resetLive,
   } = useLiveStore();
 
-  const [selectedGroup, setSelectedGroup] = useState('');
   const [sessionTitle, setSessionTitle] = useState('');
-  const [sessionType, setSessionType] = useState('lesson');
-  const [selectedLessonId, setSelectedLessonId] = useState('');
-  const [selectedLessonData, setSelectedLessonData] = useState(null);
-  const [homeworkText, setHomeworkText] = useState('');
-  const [homeworkDeadline, setHomeworkDeadline] = useState('');
   const [showAttendanceDrawer, setShowAttendanceDrawer] = useState(false);
-  const [showRecitationDrawer, setShowRecitationDrawer] = useState(false);
+  const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [duration, setDuration] = useState(0);
   const [session, setSession] = useState(null);
-  const [loadingLesson, setLoadingLesson] = useState(true);
-  const jitsiApiRef = useRef(null);
+  const [loadingSession, setLoadingSession] = useState(true);
 
-  // Mute-all-except-one panel state
-  const [showCameraPanel, setShowCameraPanel] = useState(false);
-  const [camNames, setCamNames] = useState([]);
-  const [camException, setCamException] = useState('');
-  const [camBusy, setCamBusy] = useState(false);
+  // Individual 1-on-1 state (passed from the start-live action)
+  const studentId = location.state?.studentId;
+  const studentName = location.state?.studentName;
+  const indLessonId = location.state?.lessonId;
+
+  // Edit created lesson modal state
+  const [showEditLessonModal, setShowEditLessonModal] = useState(false);
+  const [lessonForm, setLessonForm] = useState({
+    title: '',
+    description: '',
+    videoUrl: '',
+    resources: '',
+    exam: '',
+  });
+  const [availableExams, setAvailableExams] = useState([]);
+  const [savingLesson, setSavingLesson] = useState(false);
+
+  // Wird assignment during live (shared modal)
+  const [showWirdModal, setShowWirdModal] = useState(false);
+
+  // Shared mushaf (teacher-driven, student polls over HTTP)
+  const [showMushaf, setShowMushaf] = useState(false);
+  const [mushafSharing, setMushafSharing] = useState(false);
+  const [mushafRange, setMushafRange] = useState(null);
+  const [savingMushaf, setSavingMushaf] = useState(false);
 
   const socket = getSocket();
 
   useEffect(() => {
-    fetchAllGroups();
+    api.get('/exams/admin/all').then(res => {
+      setAvailableExams(res.data?.exams || []);
+    }).catch(() => {});
   }, []);
 
-  // Guard: must come from curriculum page with groupId
+  // Guard: entry requires an individual live session created beforehand
   useEffect(() => {
-    if (!location.state?.groupId) {
-      toast.error('يجب بدء البث من صفحة منهج المجموعة');
-      // Role-aware fallback: teachers cannot open /admin/groups
-      navigate(user?.role === 'teacher' ? '/teacher/groups' : '/admin/groups', { replace: true });
+    const { sessionId, studentId: sId, studentName: sName, lessonTitle, lessonId } = location.state || {};
+    if (!sId || !sessionId) {
+      toast.error('ابدأ البث من زر "بدء بث مباشر" بجانب الطالب');
+      navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users', { replace: true });
       return;
     }
 
-    const { groupId, groupName, lessonTitle, lessonId } = location.state;
-    setSelectedGroup(groupId);
+    setSessionTitle(lessonTitle || `جلسة تلاوة وبث مباشر مع ${sName || 'الطالب'}`);
+    setLessonForm(p => ({
+      ...p,
+      title: lessonTitle || `جلسة تلاوة وبث مباشر مع ${sName || 'الطالب'}`,
+    }));
 
-    // Load lesson data from the study plan
-    const loadLessonData = async () => {
-      setLoadingLesson(true);
-      try {
-        const res = await api.get(`/study-plans/group/${groupId}/full`);
-        const groupLessons = res.data.plan?.customLessons || [];
-
-        if (lessonId) {
-          const matched = groupLessons.find(l => l._id === lessonId);
-          if (matched) {
-            setSelectedLessonId(matched._id);
-            setSelectedLessonData(matched);
-            setSessionTitle(matched.title);
-            if (matched.type && ['lesson', 'review', 'recitation', 'exam'].includes(matched.type)) {
-              setSessionType(matched.type);
-            }
-          } else {
-            setSessionTitle(lessonTitle || `حصة مباشرة — ${groupName}`);
-          }
-        } else if (lessonTitle) {
-          const matched = groupLessons.find(l => l.title === lessonTitle);
-          if (matched) {
-            setSelectedLessonId(matched._id);
-            setSelectedLessonData(matched);
-            setSessionTitle(matched.title);
-          } else {
-            setSessionTitle(lessonTitle);
-          }
-        } else {
-          setSessionTitle(`حصة مباشرة — ${groupName}`);
-        }
-      } catch {
-        setSessionTitle(lessonTitle || `حصة مباشرة — ${groupName || ''}`);
-      } finally {
-        setLoadingLesson(false);
+    api.get(`/live/${sessionId}`).then(res => {
+      if (res.data?.session) {
+        setSession(res.data.session);
+        setIsBroadcasting(true);
+        socket?.emit('join-session-room', { sessionId });
+      } else {
+        toast.error('تعذر العثور على الجلسة');
+        navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users', { replace: true });
       }
-    };
-    loadLessonData();
-  }, [location.state, navigate]);
-
-  const currentGroup = groups.find(g => g._id === selectedGroup);
+    }).catch(() => {
+      toast.error('تعذر الاتصال بالجلسة');
+      navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users', { replace: true });
+    }).finally(() => {
+      setLoadingSession(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   useEffect(() => {
     if (isBroadcasting) {
@@ -120,224 +117,136 @@ export default function LiveBroadcastPage() {
     }
   }, [isBroadcasting, session, socket]);
 
-  const handleStartBroadcast = async () => {
-    if (!selectedGroup) { toast.error('خطأ: لم يتم تحديد المجموعة'); return; }
-    if (!sessionTitle.trim()) { toast.error('عنوان الجلسة مطلوب'); return; }
-
-    try {
-      // Create session in DB
-      const res = await api.post('/live', {
-        groupId: selectedGroup,
-        title: sessionTitle,
-        sessionType,
-        lessonCovered: selectedLessonId || undefined,
-        lessonTitle: sessionTitle,
-        scheduledAt: new Date(),
-        homework: homeworkText || undefined,
-        homeworkDeadline: homeworkDeadline || undefined,
-      });
-      const newSession = res.data.session;
-      setSession(newSession);
-
-      // Start session & notify via socket
-      await api.put(`/live/${newSession._id}/start`, { teacherSocketId: socket?.id || '' });
-      socket?.emit('join-group-room', { groupId: selectedGroup });
-
-      setIsBroadcasting(true);
-      toast.success('انطلق البث المباشر!');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'خطأ في بدء البث');
-    }
+  const handleEndBroadcast = () => {
+    setShowEndConfirm(true);
   };
 
-  // Mute everyone's camera except one participant (moderator-only, non-disruptive:
-  // media-level mute, nobody leaves or rejoins)
-  const openCameraPanel = () => {
-    const names = jitsiApiRef.current?.getParticipantNames?.() || [];
-    setCamNames(names);
-    setCamException('');
-    setShowCameraPanel(true);
-  };
-
-  const handleMuteAllExcept = async () => {
-    const api = jitsiApiRef.current;
-    if (!api?.muteAllVideoExcept) {
-      toast.error('غرفة البث غير جاهزة بعد — انتظر ثوانٍ وحاول مجدداً');
-      return;
-    }
-    if (api.isModerator && !api.isModerator()) {
-      toast.error('يجب أن تكون مشرف الغرفة لتنفيذ الكتم (ادخل البث أولاً قبل الطلاب)');
-      return;
-    }
-    const label = camException
-      ? `إطفاء كاميرات الجميع ما عدا "${camException}"؟`
-      : 'إطفاء كاميرات الجميع (بلا استثناء)؟';
-    if (!window.confirm(label)) return;
-    setCamBusy(true);
-    try {
-      const { muted } = api.muteAllVideoExcept(camException);
-      toast.success(muted > 0 ? `تم إطفاء ${muted} كاميرا — البث مستمر` : 'لا كاميرات مشتغلة لكتمها حالياً');
-      setShowCameraPanel(false);
-    } finally {
-      setCamBusy(false);
-    }
-  };
-
-  const handleEndBroadcast = async () => {
-    if (!window.confirm('هل تريد إنهاء البث؟')) return;
+  const confirmEndBroadcast = async () => {
+    setShowEndConfirm(false);
     if (socket && session?._id) {
-      socket.emit('end-broadcast', { sessionId: session._id, groupId: selectedGroup });
+      socket.emit('end-broadcast', { sessionId: session._id });
     }
     if (session?._id) {
       await api.put(`/live/${session._id}/end`, {}).catch(() => {});
     }
     setIsBroadcasting(false);
-    setSession(null);
-    setDuration(0);
     resetLive();
-    toast('انتهى البث المباشر');
+    toast.success('انتهى البث المباشر');
+
+    if (indLessonId) {
+      setShowEditLessonModal(true);
+    } else {
+      setSession(null);
+      setDuration(0);
+    }
   };
 
-  // Pre-broadcast setup — lesson is pre-selected from curriculum page
-  if (!isBroadcasting) {
-    if (loadingLesson) {
-      return (
-        <div className="halaqa" style={{ minHeight: '100vh', background: HQ.PAPER }}>
-          <Navbar />
-          <div style={{ paddingTop: 64, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div className="hq-skeleton" style={{ width: 40, height: 40, borderRadius: 9999, margin: '0 auto 16px' }} />
-              <p style={{ color: HQ.MUTED, fontSize: 14, fontWeight: 700 }}>جاري تحضير بيانات الدرس...</p>
-            </div>
-          </div>
-        </div>
-      );
+  const handleSaveLesson = async () => {
+    const lId = indLessonId;
+    if (!studentId || !lId) {
+      toast.error('بيانات الدرس غير مكتملة');
+      return;
     }
+    setSavingLesson(true);
+    try {
+      await api.put(`/study-plans/student/${studentId}/lessons/${lId}`, lessonForm);
+      toast.success('تم حفظ وتعديل بيانات الدرس وإتاحته للطالب بنجاح ✅');
+      setShowEditLessonModal(false);
+      navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'خطأ في حفظ الدرس');
+    } finally {
+      setSavingLesson(false);
+    }
+  };
 
+  const handleOpenDiscussion = () => {
+    const lId = indLessonId;
+    if (!lId) { toast.error('لا يوجد درس مرتبط للمناقشة'); return; }
+    const base = user?.role === 'admin' ? '/admin' : user?.role === 'teacher' ? '/teacher' : '/student';
+    navigate(`${base}/lessons/${lId}/discussion`);
+  };
+
+  // إعطاء ورد للطالب أثناء البث — يظهر له في "المطلوب مني" (النافذة مشتركة)
+  const openWirdModal = () => {
+    if (!studentId) { toast.error('لا يوجد طالب مرتبط بالجلسة'); return; }
+    setShowWirdModal(true);
+  };
+
+  // المصحف المشترك: فتح اللوحة مع جلب الحالة الحالية
+  const openMushaf = async () => {
+    if (!session?._id) { toast.error('لا توجد جلسة نشطة'); return; }
+    setShowMushaf(true);
+    try {
+      const res = await api.get(`/live/${session._id}/mushaf`);
+      const m = res.data?.sharedMushaf;
+      if (m) {
+        setMushafSharing(Boolean(m.sharing));
+        if (m.surah) setMushafRange({ surah: m.surah, from: m.fromVerse || 1, to: m.toVerse || m.fromVerse || 7 });
+      }
+    } catch (_) {}
+  };
+
+  const pushMushaf = async (payload) => {
+    if (!session?._id) return;
+    setSavingMushaf(true);
+    try {
+      const res = await api.put(`/live/${session._id}/mushaf`, payload);
+      const m = res.data?.sharedMushaf;
+      if (m) {
+        setMushafSharing(Boolean(m.sharing));
+        if (m.surah) setMushafRange({ surah: m.surah, from: m.fromVerse || 1, to: m.toVerse || m.fromVerse || 7 });
+      }
+      return true;
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'تعذر حفظ المشاركة');
+      return false;
+    } finally {
+      setSavingMushaf(false);
+    }
+  };
+
+  const handleToggleMushafShare = async () => {
+    const r = mushafRange || { surah: 1, from: 1, to: 7 };
+    const ok = await pushMushaf({ sharing: !mushafSharing, surah: r.surah, fromVerse: r.from, toVerse: r.to });
+    if (ok) toast.success(!mushafSharing ? 'يشارك الطالب المصحف الآن' : 'توقفت مشاركة المصحف');
+  };
+
+  const handleMushafNavigate = (r) => {
+    pushMushaf({ sharing: mushafSharing, surah: r.surah, fromVerse: r.from, toVerse: r.to });
+  };
+
+  // Loading state while joining the session
+  if (!isBroadcasting) {
     return (
       <div className="halaqa" style={{ minHeight: '100vh', background: HQ.PAPER }}>
         <Navbar />
-        <div style={{ paddingTop: 64, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}
-            style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 'clamp(20px,4vw,32px)', width: '100%', maxWidth: 560 }}>
-            <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{ width: 64, height: 64, background: HQ.MENTOR, borderRadius: 18, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Radio size={30} color="#fff" />
-              </div>
-              <h2 style={{ fontSize: 24, fontWeight: 800, color: HQ.INK, margin: '0 0 4px' }}>بدء بث مباشر جديد</h2>
-              <p style={{ color: HQ.MUTED, fontSize: 14, margin: 0 }}>تأكد من بيانات الجلسة ثم انطلق</p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Group & Lesson Info (read-only, pre-selected from curriculum) */}
-              <div style={{ padding: 16, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 18 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <BookOpen size={16} color={HQ.MENTOR} />
-                  <span style={{ fontSize: 14, fontWeight: 800, color: HQ.INK }}>بيانات الدرس والمجموعة</span>
-                </div>
-
-                <div style={{ background: HQ.SURFACE, borderRadius: 12, padding: 12, border: `1px solid ${HQ.LINE}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14 }}>
-                    <span style={{ color: HQ.MUTED, fontWeight: 500 }}>المجموعة:</span>
-                    <span style={{ fontWeight: 800, color: HQ.INK }}>{currentGroup?.name || location.state?.groupName || '—'}</span>
-                  </div>
-                  {selectedLessonData && (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14 }}>
-                        <span style={{ color: HQ.MUTED, fontWeight: 500 }}>الدرس:</span>
-                        <span style={{ fontWeight: 800, color: HQ.MENTOR }}>
-                          {selectedLessonData.lessonNumber ? `الدرس ${selectedLessonData.lessonNumber}: ` : ''}{selectedLessonData.title}
-                        </span>
-                      </div>
-                      {selectedLessonData.duration && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 14 }}>
-                          <span style={{ color: HQ.MUTED, fontWeight: 500 }}>المدة المقررة:</span>
-                          <span style={{ fontWeight: 700, color: HQ.INK }}>{selectedLessonData.duration} دقيقة</span>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: HQ.MENTOR, background: '#E2EFE7', padding: '8px 12px', borderRadius: 12, fontWeight: 700, marginTop: 12 }}>
-                  <CheckCircle size={15} />
-                  تم ربط البث بالدرس من منهج المجموعة
-                </div>
-
-                <button
-                  onClick={() => navigate(`/admin/groups/${selectedGroup}/curriculum`)}
-                  style={{ width: '100%', fontSize: 13, color: HQ.MENTOR, background: 'none', border: 'none', borderRadius: 8, padding: '10px 0 0', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, minHeight: 44 }}
-                >
-                  <ArrowRight size={14} />
-                  الرجوع لصفحة المنهج واختيار درس آخر
-                </button>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 14, fontWeight: 700, color: HQ.INK, marginBottom: 6, display: 'block' }}>عنوان الجلسة المباشرة *</label>
-                <input
-                  value={sessionTitle}
-                  onChange={e => setSessionTitle(e.target.value)}
-                  className="font-semibold focus:border-[#177B58] focus:outline-none"
-                  style={{
-                    width: '100%', minHeight: 48, background: HQ.SURFACE, color: HQ.INK,
-                    border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '12px 16px', fontSize: 16,
-                  }}
-                  placeholder="عنوان الجلسة..."
-                />
-                <p style={{ fontSize: 12, color: HQ.MUTED, marginTop: 4 }}>
-                  سيظهر هذا الاسم للطلاب في الإشعار المباشر وأعلى شاشة الحصة.
-                </p>
-              </div>
-              <div>
-                <label style={{ fontSize: 14, fontWeight: 700, color: HQ.INK, marginBottom: 6, display: 'block' }}>نوع الجلسة</label>
-                <select value={sessionType} onChange={e => setSessionType(e.target.value)}
-                  className="focus:border-[#177B58] focus:outline-none"
-                  style={{
-                    width: '100%', minHeight: 48, background: HQ.SURFACE, color: HQ.INK,
-                    border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '12px 16px', fontSize: 16,
-                  }}>
-                  <option value="lesson">درس جديد</option>
-                  <option value="review">مراجعة</option>
-                  <option value="exam">امتحان</option>
-                  <option value="practice">تطبيق</option>
-                </select>
-              </div>
-              {/* Homework */}
-              <div>
-                <label style={{ fontSize: 14, fontWeight: 700, color: HQ.INK, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <ClipboardList size={16} color="#B45309" /> الواجب (اختياري)
-                </label>
-                <textarea
-                  value={homeworkText}
-                  onChange={e => setHomeworkText(e.target.value)}
-                  className="resize-none focus:border-[#177B58] focus:outline-none"
-                  style={{
-                    width: '100%', minHeight: 80, background: HQ.SURFACE, color: HQ.INK,
-                    border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '12px 16px', fontSize: 16,
-                  }}
-                  placeholder="اكتب الواجب المطلوب من الطلاب..."
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: 14, fontWeight: 700, color: HQ.INK, marginBottom: 6, display: 'block' }}>موعد تسليم الواجب (اختياري)</label>
-                <input type="date"
-                  value={homeworkDeadline}
-                  onChange={e => setHomeworkDeadline(e.target.value)}
-                  className="focus:border-[#177B58] focus:outline-none"
-                  style={{
-                    width: '100%', minHeight: 48, background: HQ.SURFACE, color: HQ.INK,
-                    border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '12px 16px', fontSize: 16,
-                  }}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-              <button onClick={handleStartBroadcast} className="hq-action" style={{ background: HQ.MENTOR, color: '#fff', fontSize: 16, width: '100%' }}>
-                <Radio size={20} />
-                انطلق — ابدأ البث الآن
-              </button>
-            </div>
-          </motion.div>
+        <div style={{ paddingTop: 64, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div className="hq-skeleton" style={{ width: 40, height: 40, borderRadius: 9999, margin: '0 auto 16px' }} />
+            <p style={{ color: HQ.MUTED, fontSize: 14, fontWeight: 700 }}>
+              {loadingSession ? 'جارٍ الانضمام لغرفة البث...' : 'جارٍ التحضير...'}
+            </p>
+          </div>
         </div>
+
+
+      {/* Edit Created Lesson Modal (after broadcast ends) */}
+        {showEditLessonModal && (
+          <LessonEditModal
+            studentName={studentName}
+            lessonForm={lessonForm}
+            setLessonForm={setLessonForm}
+            availableExams={availableExams}
+            savingLesson={savingLesson}
+            onClose={() => {
+              setShowEditLessonModal(false);
+              navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users');
+            }}
+            onSave={handleSaveLesson}
+            onOpenDiscussion={handleOpenDiscussion}
+          />
+        )}
       </div>
     );
   }
@@ -353,50 +262,48 @@ export default function LiveBroadcastPage() {
             بث مباشر
           </span>
           <h1 style={{ color: HQ.INK, fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} className="hidden sm:block">{sessionTitle}</h1>
-          {selectedLessonData && (
+          {studentName && (
             <span className="hidden md:inline-flex" style={{ alignItems: 'center', gap: 4, fontSize: 12, background: '#E2EFE7', color: HQ.MENTOR, padding: '4px 10px', borderRadius: 9999, fontWeight: 700 }}>
               <BookOpen size={12} />
-              الدرس المرتبط بالبث
+              {studentName}
             </span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
           <span style={{ color: HQ.MUTED, fontSize: 13, fontWeight: 700 }} className="hidden sm:inline">{formatCountdown(duration)}</span>
 
-          {/* Recitation Queue & Wird Drawer Button */}
-          <button
-            onClick={() => setShowRecitationDrawer(true)}
-            className="hq-action"
-            style={{ background: HQ.MENTOR, color: '#fff', padding: '0 14px', fontSize: 13 }}
-            title="إدارة طابور التسميع والأوراد الفردية"
-          >
-            <Mic size={16} />
-            <span className="hidden sm:inline">طابور التسميع والورد</span>
-          </button>
-
-          {/* Attendance Drawer Button */}
+          {/* Attendance Button */}
           <button
             onClick={() => setShowAttendanceDrawer(true)}
             className="hq-action"
             style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13 }}
-            title="كشف الحضور والغياب"
+            title="الحضور"
           >
             <UserCheck size={16} />
-            <span className="hidden sm:inline">كشف الحضور</span>
+            <span className="hidden sm:inline">الحضور</span>
           </button>
 
-          {/* Mute-all-except-one cameras */}
+          {/* Wird Button */}
           <button
-            onClick={() => (showCameraPanel ? setShowCameraPanel(false) : openCameraPanel())}
+            onClick={openWirdModal}
             className="hq-action"
-            aria-expanded={showCameraPanel}
-            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13 }}
-            title="إطفاء كاميرات الجميع ما عدا واحد"
+            style={{ background: HQ.MENTOR, color: '#fff', padding: '0 14px', fontSize: 13 }}
+            title="إعطاء ورد للطالب أثناء البث"
           >
-            <VideoOff size={16} />
-            <span className="hidden sm:inline">كاميرات الطلاب</span>
+            <BookOpen size={16} />
+            <span className="hidden sm:inline">الورد</span>
           </button>
 
+          {/* Shared mushaf Button */}
+          <button
+            onClick={openMushaf}
+            className="hq-action"
+            style={{ background: mushafSharing ? HQ.MENTOR : HQ.PAPER, color: mushafSharing ? '#fff' : HQ.INK, border: mushafSharing ? 'none' : `1px solid ${HQ.LINE}`, padding: '0 14px', fontSize: 13 }}
+            title="المصحف المشترك مع الطالب"
+          >
+            <BookOpen size={16} />
+            <span className="hidden sm:inline">المصحف{mushafSharing ? ' • مشارَك' : ''}</span>
+          </button>
 
           <button
             onClick={handleEndBroadcast}
@@ -409,44 +316,8 @@ export default function LiveBroadcastPage() {
         </div>
       </div>
 
-      {/* Camera mute panel — collapsible under the top bar */}
-      {showCameraPanel && (
-        <div style={{ flex: 'none', margin: '8px 16px 0', background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 14, padding: 12 }}>
-          <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: HQ.INK }}>
-            إطفاء كاميرات الجميع ما عدا واحد — دون انقطاع البث
-          </p>
-          {camNames.length === 0 ? (
-            <p style={{ margin: '0 0 8px', fontSize: 13, color: HQ.MUTED }}>لا أسماء ظاهرة بعد — انتظر انضمام الطلاب ثم أعد الفتح.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8, maxHeight: 180, overflowY: 'auto' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: HQ.INK, minHeight: 44, cursor: 'pointer' }}>
-                <input type="radio" name="cam-exception" checked={camException === ''} onChange={() => setCamException('')} />
-                بدون استثناء (إطفاء الكل)
-              </label>
-              {camNames.map((n) => (
-                <label key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: HQ.INK, minHeight: 44, cursor: 'pointer' }}>
-                  <input type="radio" name="cam-exception" checked={camException === n} onChange={() => setCamException(n)} />
-                  {n} (يبقى مشتغلاً)
-                </label>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" onClick={() => setShowCameraPanel(false)} className="hq-action"
-              style={{ flex: 1, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, fontSize: 14 }}>
-              إلغاء
-            </button>
-            <button type="button" onClick={handleMuteAllExcept} disabled={camBusy} className="hq-action"
-              style={{ flex: 1, background: '#C2410C', color: '#fff', fontSize: 14, opacity: camBusy ? 0.6 : 1 }}>
-              <VideoOff size={16} /> تنفيذ الإطفاء
-            </button>
-          </div>
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: HQ.MUTED }}>يعمل فقط إن كنت مشرف الغرفة (بادئ البث غالباً). الكتم لمرة واحدة — من يعيد التشغيل يدوياً يُكتم مجدداً بالتكرار.</p>
-        </div>
-      )}
-
       {/* Jitsi Meeting Container — the dark stage */}
-      <div style={{ flex: 1, minHeight: 0, padding: 16, paddingTop: 8 }}>
+      <div className="m-stage" style={{ flex: 1, minHeight: 0, padding: 16, paddingTop: 8 }}>
         <div className="halaqa-stage" style={{ height: '100%', borderRadius: 18, overflow: 'hidden', position: 'relative' }}>
           <JitsiMeeting
             roomName={session?.liveRoomName || `QuranPlatform_${session?._id || 'Session'}`}
@@ -454,32 +325,195 @@ export default function LiveBroadcastPage() {
             userEmail={user?.email || ''}
             isTeacher={true}
             onLeave={handleEndBroadcast}
-            onApiReady={(api) => { jitsiApiRef.current = api; }}
           />
         </div>
       </div>
 
-      {/* Live Recitation & Individual Wird Drawer */}
-      <LiveRecitationDrawer
-        isOpen={showRecitationDrawer}
-        onClose={() => setShowRecitationDrawer(false)}
-        sessionId={session?._id}
-        sessionTitle={sessionTitle}
-        groupName={groups.find(g => g._id === selectedGroup)?.name}
-        jitsiApi={jitsiApiRef.current}
-      />
-
-      {/* Live Attendance Drawer */}
+      {/* Live Attendance */}
       <LiveAttendanceDrawer
         isOpen={showAttendanceDrawer}
         onClose={() => setShowAttendanceDrawer(false)}
         sessionId={session?._id}
         sessionTitle={sessionTitle}
-        groupName={groups.find(g => g._id === selectedGroup)?.name}
-        socket={socket}
+        singleStudentId={studentId}
+        singleStudentName={studentName}
       />
 
+      {/* End broadcast confirm */}
+      <ConfirmModal
+        open={showEndConfirm}
+        title="إنهاء البث المباشر؟"
+        message="سيخرج الطالب من الغرفة وتنتهي الجلسة الحالية."
+        confirmLabel="إنهاء البث"
+        danger
+        onConfirm={confirmEndBroadcast}
+        onClose={() => setShowEndConfirm(false)}
+      />
+
+      {/* Wird assignment (shared modal) */}
+      <WirdAssignModal
+        open={showWirdModal}
+        studentId={studentId}
+        studentName={studentName}
+        onClose={() => setShowWirdModal(false)}
+      />
+
+      {/* Shared mushaf overlay sheet */}
+      {showMushaf && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9995, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(12,12,29,0.55)' }}>
+          <div className="halaqa" dir="rtl" style={{
+            background: HQ.SURFACE, borderRadius: '20px 20px 0 0', padding: 16,
+            width: '100%', maxWidth: 720, height: '82dvh', maxHeight: 640,
+            border: `1px solid ${HQ.LINE}`, borderBottom: 'none',
+          }}>
+            <MushafSharePanel
+              interactive
+              range={mushafRange}
+              sharing={mushafSharing}
+              onToggleShare={handleToggleMushafShare}
+              onNavigate={handleMushafNavigate}
+              onClose={() => setShowMushaf(false)}
+              title={`المصحف — ${studentName || 'الطالب'}`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Edit Created Lesson Modal (after broadcast ends) */}
+      {showEditLessonModal && (
+        <LessonEditModal
+          studentName={studentName}
+          lessonForm={lessonForm}
+          setLessonForm={setLessonForm}
+          availableExams={availableExams}
+          savingLesson={savingLesson}
+          onClose={() => {
+            setShowEditLessonModal(false);
+            navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users');
+          }}
+          onSave={handleSaveLesson}
+          onOpenDiscussion={handleOpenDiscussion}
+        />
+      )}
     </div>
   );
 }
 
+function LessonEditModal({ studentName, lessonForm, setLessonForm, availableExams, savingLesson, onClose, onSave, onOpenDiscussion }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ background: HQ.SURFACE, borderRadius: 20, padding: 24, maxWidth: 580, width: '100%', border: `1px solid ${HQ.LINE}`, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 12px 36px rgba(0,0,0,0.25)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 900, color: HQ.INK }}>
+              تعديل الدرس المُنْشأ من البث المباشر
+            </h3>
+            <p style={{ margin: 0, fontSize: 13, color: HQ.MUTED }}>
+              تم إنشاء هذا الدرس تلقائياً في قائمة منهج الطالب <strong>{studentName || ''}</strong>. يمكنك الآن إضافة التسجيل والمصادر والاختبارات.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Lesson Title */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 4 }}>
+              عنوان الدرس
+            </label>
+            <input
+              type="text"
+              value={lessonForm.title}
+              onChange={e => setLessonForm(p => ({ ...p, title: e.target.value }))}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: `1px solid ${HQ.LINE}`, background: HQ.PAPER, fontSize: 14, color: HQ.INK }}
+              placeholder="مثال: جلسة تلاوة سورة البقرة وأحكام المد"
+            />
+          </div>
+
+          {/* Description & Notes */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 4 }}>
+              ملاحظات وتوجيهات الجلسة
+            </label>
+            <textarea
+              value={lessonForm.description}
+              onChange={e => setLessonForm(p => ({ ...p, description: e.target.value }))}
+              rows={3}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: `1px solid ${HQ.LINE}`, background: HQ.PAPER, fontSize: 14, color: HQ.INK, resize: 'vertical' }}
+              placeholder="اكتب توجيهاتك للطالب بناءً على ما تم في جلسة البث..."
+            />
+          </div>
+
+          {/* Video URL */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 4 }}>
+              رابط تسجيل الفيديو (يوتيوب أو رابط مباشر)
+            </label>
+            <input
+              type="url"
+              value={lessonForm.videoUrl}
+              onChange={e => setLessonForm(p => ({ ...p, videoUrl: e.target.value }))}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: `1px solid ${HQ.LINE}`, background: HQ.PAPER, fontSize: 14, color: HQ.INK, direction: 'ltr', textAlign: 'right' }}
+              placeholder="https://..."
+            />
+          </div>
+
+          {/* Resources URL */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 4 }}>
+              ملفات ومصادر وروابط إضافية
+            </label>
+            <input
+              type="text"
+              value={lessonForm.resources}
+              onChange={e => setLessonForm(p => ({ ...p, resources: e.target.value }))}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: `1px solid ${HQ.LINE}`, background: HQ.PAPER, fontSize: 14, color: HQ.INK }}
+              placeholder="روابط ملفات تجويد، مصحف، أو مراجع تهم الطالب"
+            />
+          </div>
+
+          {/* Attach Exam */}
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 4 }}>
+              ربط اختبار بهذا الدرس (اختياري)
+            </label>
+            <select
+              value={lessonForm.exam}
+              onChange={e => setLessonForm(p => ({ ...p, exam: e.target.value }))}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 12, border: `1px solid ${HQ.LINE}`, background: HQ.PAPER, fontSize: 14, color: HQ.INK }}
+            >
+              <option value="">بدون اختبار</option>
+              {availableExams.map(ex => (
+                <option key={ex._id} value={ex._id}>{ex.title} ({ex.questions?.length || 0} سؤال)</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={savingLesson}
+              className="hq-action"
+              style={{ flex: 1, minWidth: 160, background: HQ.MENTOR, color: '#fff', fontSize: 14 }}
+            >
+              {savingLesson ? <LoadingSpinner size="sm" /> : 'حفظ ونشر الدرس للطالب'}
+            </button>
+            <button
+              type="button"
+              onClick={onOpenDiscussion}
+              className="hq-action"
+              style={{ flex: 1, minWidth: 160, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+            >
+              <MessageSquare size={16} color={HQ.MENTOR} /> فتح مناقشة خاصة للدرس
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}

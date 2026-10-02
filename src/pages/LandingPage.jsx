@@ -30,18 +30,18 @@ const journeySteps = [
   { title: 'التسجيل', proof: 'أنشئ حسابك وفعّل بريدك الإلكتروني.' },
   { title: 'التقييم', proof: 'اختبار قصير لتحديد مستواك بدقة.' },
   { title: 'المستوى', proof: 'منهج مناسب لمستواك وهدفك.' },
-  { title: 'الحلقة', proof: 'مجموعة صغيرة مع معلّم يتابعك.' },
+  { title: 'الحلقة', proof: 'جلسة فردية مباشرة 1-1 مع معلّم يتابعك.' },
   { title: 'الدرس', proof: 'دروس متدرجة في الحفظ والتجويد.' },
   { title: 'المجلس الحي', proof: 'تسميع مباشر أمام المعلّم.' },
-  { title: 'المتابعة', proof: 'واجبات واختبارات وتقدّم يومي.' },
-  { title: 'الختمة', proof: 'إتمام الحفظ، والإجازة عند تحقق شروطها.' },
+  { title: 'المتابعة', proof: 'اختبارات وتقدّم يومي.' },
+  { title: 'الختمة', proof: 'إتمام الحفظ ومراجعة متقنة.' },
 ];
 
 const benefits = [
   { icon: BookmarkCheck, title: 'متابعة الحفظ', desc: 'ورد يومي من الحفظ الجديد والمراجعة.' },
   { icon: BookOpen, title: 'الدروس', desc: 'منهج متدرج حسب مستواك.' },
-  { icon: Video, title: 'المجلس الحي', desc: 'تسميع مباشر مع المعلّم وزملائك.' },
-  { icon: ClipboardList, title: 'الواجبات والاختبارات', desc: 'تدريب مستمر وقياس لمستواك.' },
+  { icon: Video, title: 'المجلس الحي', desc: 'تسميع مباشر مع معلّمك الخاص.' },
+  { icon: ClipboardList, title: 'الاختبارات', desc: 'تدريب مستمر وقياس لمستواك.' },
   { icon: BarChart3, title: 'متابعة التقدم', desc: 'تعرف أين وصلت وما خطوتك التالية.' },
   { icon: Star, title: 'تقييم المعلّم', desc: 'ملاحظات على تلاوتك وتجويدك.' },
   { icon: Flag, title: 'الختمة', desc: 'رحلة متدرجة حتى إتمام الحفظ.' },
@@ -134,10 +134,10 @@ export default function LandingPage() {
                     <span style={{ color: MENTOR }}>في حلقة حيّة تتابعك</span>
                   </h1>
                   <p style={{ margin: '16px 0 0', fontSize: 16, color: MUTED, lineHeight: 1.8, maxWidth: 520 }}>
-                    منصة الحلقة تجمعك بمعلّم ومجموعة صغيرة: دروس منظّمة، ومجلس تسميع حيّ،
+                    منصة الحلقة تجمعك بمعلّمك الخاص: دروس منظّمة، ومجلس تسميع حيّ،
                     ومتابعة يومية لحفظك ومراجعتك حتى الختمة.
                   </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
+                  <div className="m-cta-row" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
                     {isStudent ? (
                       <Link
                         to="/student"

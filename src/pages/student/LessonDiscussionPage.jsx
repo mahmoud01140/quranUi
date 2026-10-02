@@ -38,9 +38,9 @@ export default function LessonDiscussionPage() {
   const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
   const canModerate = isTeacher;
   const backTo = user?.role === 'admin'
-    ? (groupId ? `/admin/groups/${groupId}/curriculum` : '/admin/groups')
+    ? '/admin/users'
     : user?.role === 'teacher'
-      ? '/teacher/groups'
+      ? '/teacher'
       : '/student/curriculum';
 
   const load = useCallback(async (silent = false) => {
@@ -164,7 +164,7 @@ export default function LessonDiscussionPage() {
                 نقاش: {lessonTitle || 'الدرس'}
               </h1>
               <p style={{ margin: 0, fontSize: 12, color: HQ.MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {groupName || 'مجموعتي'} · مرئي لطلاب المجموعة فقط
+                {groupId ? `${groupName} · مرئي لطلاب الحلقة فقط` : 'غرفة نقاش ومتابعة خاصة بين الطالب والمعلم'}
               </p>
             </div>
           </div>
@@ -214,7 +214,7 @@ export default function LessonDiscussionPage() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: HQ.MUTED }}>
               <AlertCircle size={40} color={HQ.LINE} style={{ marginBottom: 12 }} />
               <p style={{ fontWeight: 800, fontSize: 16, color: HQ.INK, margin: '0 0 4px' }}>تعذّر تحميل النقاش</p>
-              <p style={{ fontSize: 14, margin: '0 0 12px' }}>تحقق من الاتصال أو من انتمائك لمجموعة هذا الدرس.</p>
+              <p style={{ fontSize: 14, margin: '0 0 12px' }}>تحقق من الاتصال أو من صلاحية وصولك لهذا الدرس.</p>
               <button type="button" onClick={() => load(false)} className="hq-action"
                 style={{ background: HQ.MENTOR, color: '#fff', padding: '0 20px', fontSize: 14 }}>
                 <RefreshCw size={15} /> إعادة المحاولة
@@ -253,8 +253,10 @@ export default function LessonDiscussionPage() {
                       )}
 
                       {msg.replyTo && !msg.isDeleted && (
-                        <div style={{ background: HQ.PAPER, borderRight: `2px solid ${HQ.LINE}`, borderRadius: 8, padding: '6px 10px', marginBottom: 4, fontSize: 12, color: HQ.MUTED }}>
-                          رد على رسالة سابقة
+                        <div style={{ background: HQ.PAPER, borderRight: `2px solid ${HQ.LINE}`, borderRadius: 8, padding: '6px 10px', marginBottom: 4, fontSize: 12, color: HQ.MUTED, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {msg.replyToMessage?.content
+                            ? `رد على ${msg.replyToMessage.senderName || 'رسالة'}: ${msg.replyToMessage.content}`
+                            : 'رد على رسالة سابقة'}
                         </div>
                       )}
 
@@ -337,7 +339,7 @@ export default function LessonDiscussionPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="اكتب سؤالك أو مشاركتك عن هذا الدرس..."
-            style={{ flex: 1, resize: 'none', background: HQ.PAPER, borderRadius: 12, border: 'none', padding: '12px 14px', fontSize: 14, color: HQ.INK, fontFamily: 'inherit', minHeight: 48, maxHeight: 120 }} />
+            style={{ flex: 1, resize: 'none', background: HQ.PAPER, borderRadius: 12, border: 'none', padding: '12px 14px', fontSize: 16, color: HQ.INK, fontFamily: 'inherit', minHeight: 48, maxHeight: 120 }} />
           <button type="button" onClick={handleSend} disabled={!input.trim() || isSending} aria-label="إرسال"
             style={{
               flex: 'none', width: 48, height: 48, borderRadius: 12, border: 'none',

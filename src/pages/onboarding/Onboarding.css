@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Amiri:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Amiri:wght@400;700&display=swap');
 
 /* ═══════════════════════════════════════════════
    Onboarding — local visual layer (Al-Halaqa).
@@ -231,8 +231,8 @@
 
 /* Question navigator dots */
 .onb-dot {
-  min-width: 32px;
-  min-height: 32px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 6px;
   border-radius: 8px;
   border: 1px solid var(--onb-line);
@@ -261,7 +261,7 @@
 
 .onb-dot.oral {
   border-color: #C2410C;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
 }
 
 .onb-dot.oral.ans {

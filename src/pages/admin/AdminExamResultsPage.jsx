@@ -5,6 +5,7 @@ import PageLayout from '../../components/shared/PageLayout';
 import useExamStore from '../../store/examStore';
 import { formatDateAr } from '../../utils/helpers';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import SessionTimePicker from '../../components/shared/SessionTimePicker';
 import Pagination from '../../components/shared/Pagination';
 import usePagination from '../../hooks/usePagination';
 import api from '../../services/api';
@@ -43,8 +44,11 @@ export default function AdminExamResultsPage() {
         oralScore: Number(reviewForm.oralScore),
         teacherNotes: reviewForm.teacherNotes,
         ...(reviewForm.assignedLevel ? { assignedLevel: reviewForm.assignedLevel } : {}),
+        scheduleDays: reviewForm.scheduleDays || ['السبت', 'الثلاثاء'],
+        sessionTime: reviewForm.sessionTime || '18:00',
+        isApproved: true,
       });
-      toast.success('تم حفظ التقييم وتحديث المستوى');
+      toast.success('تم حفظ التقييم واعتماد الطالب وتحديد المواعيد بنجاح');
       setReviewModal(null);
       fetchExamResults(examId);
     } catch { toast.error('خطأ في الحفظ'); }
@@ -194,22 +198,68 @@ export default function AdminExamResultsPage() {
                   style={inputStyle} placeholder="مثال: 85" />
               </div>
               {(reviewModal.exam?.type === 'placement' || reviewModal.examType === 'placement' || exam?.type === 'placement') && (
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }} htmlFor="rev-level">
-                    المستوى المعتمد للطالب
-                  </label>
-                  <select
-                    id="rev-level"
-                    value={reviewForm.assignedLevel || 'foundation'}
-                    onChange={e => setReviewForm(p => ({ ...p, assignedLevel: e.target.value }))}
-                    style={inputStyle}
-                  >
-                    <option value="foundation">المستوى التأسيسي</option>
-                    <option value="memorization">مستوى الحفظ والتجويد</option>
-                    <option value="teacher_prep">إعداد معلمين</option>
-                    <option value="senior">كبار السن</option>
-                  </select>
-                </div>
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }} htmlFor="rev-level">
+                      المستوى المعتمد للطالب
+                    </label>
+                    <select
+                      id="rev-level"
+                      value={reviewForm.assignedLevel || 'foundation'}
+                      onChange={e => setReviewForm(p => ({ ...p, assignedLevel: e.target.value }))}
+                      style={inputStyle}
+                    >
+                      <option value="foundation">المستوى التأسيسي</option>
+                      <option value="memorization">مستوى الحفظ والتجويد</option>
+                      <option value="teacher_prep">إعداد معلمين</option>
+                      <option value="senior">كبار السن</option>
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                      أيام البث الأسبوعية المحددة للطالب
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'].map(day => {
+                        const selected = (reviewForm.scheduleDays || []).includes(day);
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              const curr = reviewForm.scheduleDays || [];
+                              const next = curr.includes(day) ? curr.filter(d => d !== day) : [...curr, day];
+                              setReviewForm(p => ({ ...p, scheduleDays: next }));
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              border: `1px solid ${selected ? HQ.MENTOR : HQ.LINE}`,
+                              background: selected ? HQ.MENTOR : HQ.PAPER,
+                              color: selected ? '#fff' : HQ.INK,
+                            }}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                      ساعة بدء البث
+                    </label>
+                    <SessionTimePicker
+                      value={reviewForm.sessionTime || '18:00'}
+                      onChange={v => setReviewForm(p => ({ ...p, sessionTime: v }))}
+                    />
+                  </div>
+                </>
               )}
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }} htmlFor="rev-notes">ملاحظات وتوجيهات للطالب</label>
@@ -221,7 +271,7 @@ export default function AdminExamResultsPage() {
                 <button type="button" onClick={() => setReviewModal(null)} className="hq-action" style={{ flex: 1, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, fontSize: 14 }}>إلغاء</button>
                 <button type="button" onClick={handleReview} disabled={saving || !reviewForm.oralScore} className="hq-action"
                   style={{ flex: 1, background: HQ.MENTOR, color: '#fff', fontSize: 14, opacity: (saving || !reviewForm.oralScore) ? 0.5 : 1 }}>
-                  {saving ? <LoadingSpinner size="sm" color="white" /> : 'حفظ التقييم'}
+                  {saving ? <LoadingSpinner size="sm" color="white" /> : 'حفظ التقييم واعتماد المواعيد'}
                 </button>
               </div>
             </div>

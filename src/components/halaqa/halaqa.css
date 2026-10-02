@@ -309,3 +309,215 @@ table.hq-table {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Dashboard header compaction on phones ── */
+@media (max-width: 480px) {
+  .halaqa .m-dash-title {
+    font-size: clamp(22px, 6vw, 28px) !important;
+  }
+  .halaqa .m-hide-sm {
+    display: none !important;
+  }
+  .halaqa .m-sched-card {
+    padding: 12px 14px !important;
+    margin-bottom: 14px !important;
+  }
+}
+
+/* ── Today dashboard: density + mobile ── */
+.halaqa .m-page-pad {
+  padding-bottom: 24px;
+}
+@media (max-width: 1023px) {
+  .halaqa .m-page-pad {
+    padding-bottom: 112px;
+  }
+}
+@media (max-width: 480px) {
+  .halaqa .m-stat-num {
+    font-size: clamp(22px, 7vw, 28px) !important;
+  }
+  .halaqa .m-today-actions {
+    width: 100%;
+  }
+  .halaqa .m-today-actions .hq-action {
+    flex: 1 1 45%;
+    justify-content: center;
+    min-height: 48px;
+  }
+  .halaqa .m-today-actions .m-primary {
+    flex: 1 1 100%;
+    order: -1;
+    min-height: 52px;
+  }
+}
+
+/* ── Large screens: reduce vertical scroll on sessions page ── */
+@media (min-width: 1024px) {
+  .halaqa main.sess-main {
+    padding-bottom: 24px !important;
+  }
+  .halaqa .sess-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .halaqa .sess-grid > li {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* ── Admin tables → cards on phones ── */
+@media (max-width: 640px) {
+  .halaqa .hq-table-wrap {
+    overflow-x: visible;
+  }
+  .halaqa table.hq-table {
+    min-width: 0 !important;
+  }
+  .halaqa table.hq-table thead {
+    display: none;
+  }
+  .halaqa table.hq-table,
+  .halaqa table.hq-table tbody,
+  .halaqa table.hq-table tr,
+  .halaqa table.hq-table td {
+    display: block;
+    width: 100%;
+  }
+  .halaqa table.hq-table tr {
+    background: #FFFFFF;
+    border: 1px solid #E8E2D4;
+    border-radius: 18px;
+    margin-bottom: 12px;
+    padding: 6px 14px;
+  }
+  .halaqa table.hq-table td {
+    border: none !important;
+    padding: 8px 0 !important;
+    text-align: right !important;
+  }
+  .halaqa table.hq-table td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 12px;
+    font-weight: 800;
+    color: #756E85;
+    margin-bottom: 2px;
+  }
+  .halaqa table.hq-table td[data-label=""]::before {
+    display: none;
+  }
+  .halaqa table.hq-table td.m-actions .flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .halaqa table.hq-table td.m-actions .hq-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ── Mobile grids & stacks (≤480px) ── */
+@media (max-width: 480px) {
+  .halaqa .m-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .halaqa .m-tabs-col {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .halaqa .m-tabs-col > button {
+    width: 100%;
+    justify-content: center;
+  }
+  .halaqa .m-modal-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .halaqa .m-modal-actions .hq-action {
+    width: 100%;
+    justify-content: center;
+  }
+  .halaqa .m-student-actions .m-primary {
+    order: -1;
+    width: 100%;
+    min-height: 52px;
+    justify-content: center;
+  }
+  .halaqa .m-student-actions .hq-action:not(.m-primary) {
+    flex: 1 1 45%;
+    justify-content: center;
+  }
+  .halaqa .m-full {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Lesson steps: 2 per row on phones */
+  .halaqa .m-steps {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+  .halaqa .m-steps > button {
+    min-width: 0;
+  }
+  /* Wird/surah grids: surah full row, verses half-half */
+  .halaqa .m-form-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .halaqa .m-form-grid > label:first-child {
+    grid-column: 1 / -1;
+  }
+  /* Time picker: period drops to full row on phones */
+  .halaqa .m-timepick {
+    flex-wrap: wrap;
+  }
+  .halaqa .m-timepick > label:last-child {
+    flex: 1 1 100%;
+  }
+}
+/* Landing + onboarding CTA rows stack on phones (global: these pages are not .halaqa) */
+@media (max-width: 480px) {
+  .m-cta-row {
+    flex-wrap: wrap;
+  }
+  .m-cta-row > a,
+  .m-cta-row > button {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+}
+
+/* Broadcast stage: tighter padding on phones */
+@media (max-width: 640px) {
+  .halaqa .m-stage {
+    padding: 8px !important;
+    padding-top: 4px !important;
+  }
+}
+
+/* ── Student sessions list: mobile-first stacking ── */
+@media (max-width: 640px) {
+  .halaqa .sess-row {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px;
+  }
+  .halaqa .sess-row > button {
+    width: 100%;
+  }
+  .halaqa .sess-title {
+    font-size: 15px !important;
+  }
+  .halaqa .sess-actions {
+    width: 100%;
+  }
+  .halaqa .sess-actions .hq-action {
+    flex: 1;
+    justify-content: center;
+  }
+  .halaqa .sess-block-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

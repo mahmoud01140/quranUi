@@ -30,36 +30,33 @@ const WaitingApprovalPage = lazy(() => import('./pages/onboarding/WaitingApprova
 
 // Student
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
-const MyGroupPage = lazy(() => import('./pages/student/MyGroupPage'));
+
 const LiveClassPage = lazy(() => import('./pages/student/LiveClassPage'));
 const CurriculumPage = lazy(() => import('./pages/student/CurriculumPage'));
-const ExamsPage = lazy(() => import('./pages/student/ExamsPage'));
 const ProgressPage = lazy(() => import('./pages/student/ProgressPage'));
-const HomeworkPage = lazy(() => import('./pages/student/HomeworkPage'));
 const TakeExamPage = lazy(() => import('./pages/student/TakeExamPage'));
 const LessonDiscussionPage = lazy(() => import('./pages/student/LessonDiscussionPage'));
 const StudentResourcesPage = lazy(() => import('./pages/student/StudentResourcesPage'));
 const LessonPage = lazy(() => import('./pages/student/LessonPage'));
 const QuranViewerPage = lazy(() => import('./pages/student/QuranViewerPage'));
 const SubscriptionPage = lazy(() => import('./pages/student/SubscriptionPage'));
-const DailyTrackerPage = lazy(() => import('./pages/student/DailyTrackerPage'));
 
 // Teacher
 const TeacherDashboard = lazy(() => import('./pages/teacher/TeacherDashboard'));
-const MyGroupsPage = lazy(() => import('./pages/teacher/MyGroupsPage'));
+
 const LiveBroadcastPage = lazy(() => import('./pages/teacher/LiveBroadcastPage'));
 const TeacherReviewCenterPage = lazy(() => import('./pages/teacher/TeacherReviewCenterPage'));
 const CreateExamPage = lazy(() => import('./pages/teacher/CreateExamPage'));
-const TeacherDailyReviewPage = lazy(() => import('./pages/teacher/TeacherDailyReviewPage'));
 
 // Admin
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const TodayDashboardPage = lazy(() => import('./pages/admin/TodayDashboardPage'));
 const AdminOnboardingSettingsPage = lazy(() => import('./pages/admin/AdminOnboardingSettingsPage'));
 const AdminPaymentsPage = lazy(() => import('./pages/admin/AdminPaymentsPage'));
 const UsersManagement = lazy(() => import('./pages/admin/UsersManagement'));
-const GroupsManagement = lazy(() => import('./pages/admin/GroupsManagement'));
+const PendingLevelPage = lazy(() => import('./pages/admin/PendingLevelPage'));
+const SessionsSchedulePage = lazy(() => import('./pages/admin/SessionsSchedulePage'));
 const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
-const AdminGroupCurriculumPage = lazy(() => import('./pages/admin/AdminGroupCurriculumPage'));
 const AdminExamsPage = lazy(() => import('./pages/admin/AdminExamsPage'));
 const AdminExamResultsPage = lazy(() => import('./pages/admin/AdminExamResultsPage'));
 const AdminResourcesPage = lazy(() => import('./pages/admin/AdminResourcesPage'));
@@ -118,13 +115,13 @@ export default function App() {
 
             {/* Student routes */}
             <Route path="/student" element={<ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>} />
-            <Route path="/student/group" element={<Navigate to="/student/curriculum?tab=group" replace />} />
+            <Route path="/student/group" element={<Navigate to="/student/curriculum" replace />} />
             <Route path="/student/live" element={<ProtectedRoute role="student"><LiveClassPage /></ProtectedRoute>} />
             <Route path="/student/curriculum" element={<ProtectedRoute role="student"><CurriculumPage /></ProtectedRoute>} />
             <Route path="/student/exams" element={<ProtectedRoute role="student"><Navigate to="/student?tab=exams" replace /></ProtectedRoute>} />
             <Route path="/student/progress" element={<ProtectedRoute role="student"><ProgressPage /></ProtectedRoute>} />
             <Route path="/student/subscription" element={<ProtectedRoute role="student"><SubscriptionPage /></ProtectedRoute>} />
-            <Route path="/student/homework" element={<ProtectedRoute role="student"><Navigate to="/student?tab=homework" replace /></ProtectedRoute>} />
+            <Route path="/student/homework" element={<ProtectedRoute role="student"><Navigate to="/student?tab=exams" replace /></ProtectedRoute>} />
             <Route path="/student/exams/:examId/take" element={<ProtectedRoute role="student"><TakeExamPage /></ProtectedRoute>} />
             <Route path="/student/lessons/:lessonId/discussion" element={<ProtectedRoute role="student"><LessonDiscussionPage /></ProtectedRoute>} />
             <Route path="/student/daily-tracker" element={<ProtectedRoute role="student"><Navigate to="/student?tab=wird" replace /></ProtectedRoute>} />
@@ -134,27 +131,30 @@ export default function App() {
 
             {/* Teacher routes */}
             <Route path="/teacher" element={<ProtectedRoute role="teacher"><TeacherDashboard /></ProtectedRoute>} />
-            <Route path="/teacher/groups" element={<ProtectedRoute role="teacher"><MyGroupsPage /></ProtectedRoute>} />
-            <Route path="/teacher/broadcast" element={<ProtectedRoute role="teacher"><LiveBroadcastPage /></ProtectedRoute>} />
+            <Route path="/teacher/groups" element={<Navigate to="/teacher" replace />} />
+            <Route path="/teacher/broadcast" element={<BroadcastRedirect />} />
             <Route path="/teacher/review" element={<ProtectedRoute role={['teacher', 'admin']}><TeacherReviewCenterPage /></ProtectedRoute>} />
             <Route path="/teacher/homework" element={<ProtectedRoute role="teacher"><Navigate to="/teacher/review" replace /></ProtectedRoute>} />
             <Route path="/teacher/recordings" element={<ProtectedRoute role="teacher"><Navigate to="/teacher/review" replace /></ProtectedRoute>} />
             <Route path="/teacher/create-exam" element={<ProtectedRoute role="teacher"><CreateExamPage /></ProtectedRoute>} />
             <Route path="/teacher/lessons/:lessonId/discussion" element={<ProtectedRoute role="teacher"><LessonDiscussionPage /></ProtectedRoute>} />
             <Route path="/teacher/resources" element={<ProtectedRoute role="teacher"><StudentResourcesPage /></ProtectedRoute>} />
-            <Route path="/teacher/daily-review" element={<ProtectedRoute role="teacher"><TeacherDailyReviewPage /></ProtectedRoute>} />
 
-            {/* Admin routes */}
-            <Route path="/admin" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/review" element={<ProtectedRoute role="admin"><Navigate to="/admin/groups" replace /></ProtectedRoute>} />
+            {/* Admin routes — لوحة اليوم هي البداية */}
+            <Route path="/admin" element={<ProtectedRoute role="admin"><TodayDashboardPage /></ProtectedRoute>} />
+            <Route path="/admin/overview" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/today" element={<Navigate to="/admin" replace />} />
+            <Route path="/admin/review" element={<ProtectedRoute role="admin"><Navigate to="/admin/users" replace /></ProtectedRoute>} />
             <Route path="/admin/onboarding-settings" element={<ProtectedRoute role="admin"><AdminOnboardingSettingsPage /></ProtectedRoute>} />
             <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPaymentsPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute role="admin"><UsersManagement /></ProtectedRoute>} />
-            <Route path="/admin/groups" element={<ProtectedRoute role="admin"><GroupsManagement /></ProtectedRoute>} />
-            <Route path="/admin/assign" element={<ProtectedRoute role="admin"><Navigate to="/admin/groups" replace /></ProtectedRoute>} />
+            <Route path="/admin/pending" element={<ProtectedRoute role="admin"><PendingLevelPage /></ProtectedRoute>} />
+            <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><SessionsSchedulePage /></ProtectedRoute>} />
+            <Route path="/admin/groups" element={<Navigate to="/admin/users" replace />} />
+            <Route path="/admin/assign" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/reports" element={<ProtectedRoute role="admin"><ReportsPage /></ProtectedRoute>} />
             <Route path="/admin/live" element={<ProtectedRoute role={['admin', 'teacher']}><LiveBroadcastPage /></ProtectedRoute>} />
-            <Route path="/admin/groups/:groupId/curriculum" element={<ProtectedRoute role={['admin', 'teacher']}><AdminGroupCurriculumPage /></ProtectedRoute>} />
+            <Route path="/admin/groups/:groupId/curriculum" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/exams" element={<ProtectedRoute role="admin"><AdminExamsPage /></ProtectedRoute>} />
             <Route path="/admin/exams/:examId/results" element={<ProtectedRoute role="admin"><AdminExamResultsPage /></ProtectedRoute>} />
             <Route path="/teacher/exams" element={<ProtectedRoute role="teacher"><AdminExamsPage /></ProtectedRoute>} />
@@ -173,6 +173,12 @@ export default function App() {
   );
 }
 
+
+/* مسار /teacher/broadcast المحذوف → تحويلة آمنة للمسار الموحد مع تمرير الـ state */
+function BroadcastRedirect() {
+  const location = useLocation();
+  return <Navigate to="/admin/live" replace state={location.state} />;
+}
 
 function getDashboardPath(user) {
   if (!user) return '/login';

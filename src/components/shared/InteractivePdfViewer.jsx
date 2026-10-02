@@ -375,7 +375,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
                 onClick={() => setPageNum(p => Math.max(1, p - 1))}
                 aria-label="الصفحة السابقة"
                 className="rounded-lg disabled:opacity-30 transition-colors"
-                style={{ minWidth: 40, minHeight: 40, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                style={{ minWidth: 44, minHeight: 44, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
                 title="الصفحة السابقة"
               >
                 <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
@@ -394,7 +394,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
                 onClick={() => setPageNum(p => Math.min(numPages, p + 1))}
                 aria-label="الصفحة التالية"
                 className="rounded-lg disabled:opacity-30 transition-colors"
-                style={{ minWidth: 40, minHeight: 40, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                style={{ minWidth: 44, minHeight: 44, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
                 title="الصفحة التالية"
               >
                 <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
@@ -410,7 +410,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
                 onClick={() => setScale(s => Math.max(0.5, s - 0.25))}
                 aria-label="تصغير"
                 className="rounded-lg disabled:opacity-30 transition-colors"
-                style={{ minWidth: 40, minHeight: 40, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                style={{ minWidth: 44, minHeight: 44, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
                 title="تصغير"
               >
                 <ZoomOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden />
@@ -425,7 +425,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
                 onClick={() => setScale(s => Math.min(2.5, s + 0.25))}
                 aria-label="تكبير"
                 className="rounded-lg disabled:opacity-30 transition-colors"
-                style={{ minWidth: 40, minHeight: 40, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
+                style={{ minWidth: 44, minHeight: 44, border: 'none', background: 'transparent', color: '#2A2438', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 4 }}
                 title="تكبير"
               >
                 <ZoomIn className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden />
@@ -700,7 +700,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
                             aria-label="حذف الملاحظة"
                             className="transition-colors"
                             style={{
-                              minWidth: 40, minHeight: 40, borderRadius: 8, border: 'none',
+                              minWidth: 44, minHeight: 44, borderRadius: 8, border: 'none',
                               background: 'none', color: '#C2410C', cursor: 'pointer',
                               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             }}

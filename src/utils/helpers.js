@@ -30,6 +30,16 @@ export const formatTime = (timeStr) => {
   return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`;
 };
 
+// Format time string "18:00" to 12-hour system "6:00 مساءً" / "9:30 صباحاً"
+export const formatTime12Ar = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return '';
+  const [h, m] = timeStr.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return timeStr;
+  const period = h >= 12 ? 'مساءً' : 'صباحاً';
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+};
+
 // Get avatar initials
 export const getInitials = (firstName, lastName) => {
   return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase();

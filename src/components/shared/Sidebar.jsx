@@ -14,7 +14,7 @@ import { HQ } from '../../components/halaqa/primitives';
 
 const studentLinks = [
   { to: '/student', icon: LayoutDashboard, label: 'المطلوب مني اليوم', end: true },
-  { to: '/student/curriculum', icon: BookOpen, label: 'المنهج والمجموعة' },
+  { to: '/student/curriculum', icon: BookOpen, label: 'الحصص السابقة' },
   { to: '/student/quran', icon: BookMarked, label: 'المصحف الإلكتروني والمعلم' },
   { to: '/student/resources', icon: FolderOpen, label: 'المكتبة التعليمية' },
   { to: '/student/subscription', icon: CreditCard, label: 'الاشتراك' },
@@ -22,8 +22,6 @@ const studentLinks = [
 
 const teacherLinks = [
   { to: '/teacher', icon: LayoutDashboard, label: 'الرئيسية', end: true },
-  { to: '/teacher/groups', icon: Users, label: 'مجموعاتي' },
-  { to: '/teacher/daily-review', icon: CalendarCheck, label: 'مراجعة الحفظ' },
   { to: '/teacher/review', icon: ClipboardList, label: 'مركز التصحيح والمراجعة' },
   { to: '/teacher/exams', icon: FileText, label: 'بنك وإدارة الامتحانات' },
   { to: '/teacher/resources', icon: FolderOpen, label: 'المكتبة التعليمية' },
@@ -32,13 +30,14 @@ const teacherLinks = [
 /* Grouped by function — same routes, no path changes. `section` renders
    a quiet header above the first link of each functional group. */
 const adminLinks = [
-  { to: '/admin', icon: LayoutDashboard, label: 'الرئيسية (لوحة التحكم)', end: true },
-  { section: 'التشغيل اليومي' },
-  { to: '/admin/groups', icon: BookMarked, label: 'إدارة وتسكين الحلقات' },
+  { to: '/admin', icon: LayoutDashboard, label: 'لوحة اليوم', end: true },
+  { to: '/admin/overview', icon: BarChart2, label: 'نظرة عامة' },
   { section: 'المحتوى والاختبارات' },
   { to: '/admin/exams', icon: FileText, label: 'بنك وإدارة الامتحانات' },
   { section: 'الإدارة' },
   { to: '/admin/users', icon: Users, label: 'إدارة الطلاب والمستخدمين' },
+  { to: '/admin/pending', icon: UserCheck, label: 'بانتظار تحديد المستوى' },
+  { to: '/admin/schedule', icon: CalendarCheck, label: 'مواعيد الحصص' },
   { to: '/admin/payments', icon: CreditCard, label: 'الاشتراكات والمدفوعات' },
   { to: '/admin/reports', icon: BarChart2, label: 'كشوف الحضور والغياب' },
   { section: 'النظام' },

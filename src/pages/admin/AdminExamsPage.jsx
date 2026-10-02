@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageLayout from '../../components/shared/PageLayout';
+import useAuthStore from '../../store/authStore';
 import useExamStore from '../../store/examStore';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { formatDateAr } from '../../utils/helpers';
@@ -33,6 +34,7 @@ const LEVEL_LABELS = {
 };
 
 export default function AdminExamsPage() {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const { adminExams, fetchAdminAllExams, deleteGroupExam, isLoading } = useExamStore();
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -125,7 +127,7 @@ export default function AdminExamsPage() {
             <button
               type="button"
               onClick={() => navigate('/teacher/create-exam')}
-              className="hq-action"
+              className="hq-action m-full"
               style={{ background: HQ.MENTOR, color: '#fff', fontSize: 14, padding: '0 20px' }}
             >
               <Plus size={17} aria-hidden />
@@ -337,15 +339,18 @@ export default function AdminExamsPage() {
                         <span>عرض النتائج</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/student/exams/${exam._id}/take`)}
-                        title="معاينة كطالب"
-                        aria-label={`معاينة ${exam.title} كطالب`}
-                        style={iconBtn}
-                      >
-                        <Eye size={16} aria-hidden />
-                      </button>
+                      {/* معاينة كطالب: متاحة للأدمن فقط (مسار الطالب يرفض المعلم) */}
+                      {user?.role === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/student/exams/${exam._id}/take`)}
+                          title="معاينة كطالب"
+                          aria-label={`معاينة ${exam.title} كطالب`}
+                          style={iconBtn}
+                        >
+                          <Eye size={16} aria-hidden />
+                        </button>
+                      )}
 
                       <button
                         type="button"

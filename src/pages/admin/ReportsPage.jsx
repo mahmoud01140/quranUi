@@ -181,7 +181,7 @@ export default function ReportsPage() {
                     aria-pressed={filterTimeframe === t.id}
                     className="px-3 text-xs font-bold"
                     style={{
-                      minHeight: 40, borderRadius: 8, border: 'none', cursor: 'pointer',
+                      minHeight: 44, borderRadius: 8, border: 'none', cursor: 'pointer',
                       background: filterTimeframe === t.id ? HQ.MENTOR : 'transparent',
                       color: filterTimeframe === t.id ? '#fff' : HQ.MUTED,
                     }}
@@ -311,7 +311,7 @@ export default function ReportsPage() {
 
                       return (
                         <tr key={s._id}>
-                          <td>
+                          <td data-label="الطالب">
                             <div className="flex items-center gap-3">
                               <span aria-hidden className="avatar-circle"
                                 style={{
@@ -327,27 +327,27 @@ export default function ReportsPage() {
                             </div>
                           </td>
 
-                          <td className="font-medium" style={{ color: HQ.MUTED }}>
+                          <td data-label="المجموعة" className="font-medium" style={{ color: HQ.MUTED }}>
                             {s.groupName || '—'}
                           </td>
 
-                          <td className="text-center font-bold" style={{ color: HQ.INK, fontVariantNumeric: 'tabular-nums' }}>
+                          <td data-label="إجمالي الحصص" className="text-center font-bold" style={{ color: HQ.INK, fontVariantNumeric: 'tabular-nums' }}>
                             {item.total}
                           </td>
 
-                          <td className="text-center font-bold" style={{ color: HQ.MENTOR, fontVariantNumeric: 'tabular-nums' }}>
+                          <td data-label="حاضر" className="text-center font-bold" style={{ color: HQ.MENTOR, fontVariantNumeric: 'tabular-nums' }}>
                             {item.present}
                           </td>
 
-                          <td className="text-center font-bold" style={{ color: '#B45309', fontVariantNumeric: 'tabular-nums' }}>
+                          <td data-label="متأخر" className="text-center font-bold" style={{ color: '#B45309', fontVariantNumeric: 'tabular-nums' }}>
                             {item.late}
                           </td>
 
-                          <td className="text-center font-bold" style={{ color: '#C2410C', fontVariantNumeric: 'tabular-nums' }}>
+                          <td data-label="غائب" className="text-center font-bold" style={{ color: '#C2410C', fontVariantNumeric: 'tabular-nums' }}>
                             {item.absent}
                           </td>
 
-                          <td className="text-center">
+                          <td data-label="نسبة الحضور" className="text-center">
                             <span className="font-black text-xs"
                               style={{
                                 display: 'inline-block', padding: '4px 12px', borderRadius: 9999,
@@ -357,7 +357,7 @@ export default function ReportsPage() {
                             </span>
                           </td>
 
-                          <td>
+                          <td data-label="آخر الجلسات والملاحظات">
                             <div className="flex flex-wrap gap-1" style={{ maxWidth: 320 }}>
                               {item.sessions.slice(0, 3).map((sess, idx) => {
                                 const st = sessionTone(sess.status);
