@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import api from '../services/api';
-import { connectSocket, disconnectSocket, joinGroupRoom } from '../services/socket';
+// Realtime is HTTP polling (Vercel-safe) — no socket.io connection needed.
 
 const useAuthStore = create(
   persist(
@@ -19,7 +19,6 @@ const useAuthStore = create(
         try {
           const res = await api.post('/auth/register', data);
           set({ user: res.data.user, token: res.data.token, isLoading: false });
-          connectSocket(res.data.token);
           return res.data;
         } catch (error) {
           set({ isLoading: false });
@@ -27,15 +26,12 @@ const useAuthStore = create(
         }
       },
 
-      login: async (email, password) => {
+      // identifier: رقم الهاتف أو البريد الإلكتروني (يُرسل كليهما للتوافق مع السيرفر)
+      login: async (identifier, password) => {
         set({ isLoading: true });
         try {
-          const res = await api.post('/auth/login', { email, password });
+          const res = await api.post('/auth/login', { identifier, email: identifier, password });
           set({ user: res.data.user, token: res.data.token, isLoading: false });
-          connectSocket(res.data.token);
-          // Auto-join group room for live broadcasts
-          const gId = res.data.user.group?._id || res.data.user.group;
-          if (gId) setTimeout(() => joinGroupRoom(gId), 500);
           return res.data;
         } catch (error) {
           set({ isLoading: false });
@@ -47,7 +43,6 @@ const useAuthStore = create(
         try {
           await api.post('/auth/logout');
         } catch (_) {}
-        disconnectSocket();
         set({ user: null, token: null });
       },
 
@@ -58,10 +53,6 @@ const useAuthStore = create(
           if (!token) return set({ user: null, isCheckingAuth: false });
           const res = await api.get('/auth/me');
           set({ user: res.data.user, token, isCheckingAuth: false });
-          connectSocket(token);
-          // Auto-join group room for live broadcasts
-          const gId = res.data.user.group?._id || res.data.user.group;
-          if (gId) setTimeout(() => joinGroupRoom(gId), 500);
           return res.data.user;
         } catch (_) {
           set({ user: null, token: null, isCheckingAuth: false });

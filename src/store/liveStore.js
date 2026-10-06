@@ -11,7 +11,6 @@ const useLiveStore = create((set, get) => ({
   raisedHands: new Set(),
   localStream: null,
   remoteStream: null,
-  teacherSocketId: null,
   isLoading: false,
   isMuted: false,
   isVideoOff: false,
@@ -21,7 +20,6 @@ const useLiveStore = create((set, get) => ({
   setIsBroadcasting: (val) => set({ isBroadcasting: val }),
   setLocalStream: (stream) => set({ localStream: stream }),
   setRemoteStream: (stream) => set({ remoteStream: stream }),
-  setTeacherSocketId: (id) => set({ teacherSocketId: id }),
 
   addParticipant: (participant) => set((state) => ({
     participants: [...state.participants.filter((p) => p.studentId !== participant.studentId), participant],
@@ -29,7 +27,7 @@ const useLiveStore = create((set, get) => ({
 
   removeParticipant: (id) => set((state) => ({
     participants: state.participants.filter(
-      (p) => p.studentId !== id && p.socketId !== id
+      (p) => p.studentId !== id
     ),
   })),
 
@@ -81,8 +79,8 @@ const useLiveStore = create((set, get) => ({
     return res.data.session;
   },
 
-  startSession: async (sessionId, teacherSocketId) => {
-    const res = await api.put(`/live/${sessionId}/start`, { teacherSocketId });
+  startSession: async (sessionId) => {
+    const res = await api.put(`/live/${sessionId}/start`);
     set({ session: res.data.session, isLive: true, isBroadcasting: true });
     return res.data.session;
   },
@@ -106,7 +104,7 @@ const useLiveStore = create((set, get) => ({
     set({
       session: null, isLive: false, isBroadcasting: false,
       participants: [], chatMessages: [], raisedHands: new Set(),
-      localStream: null, remoteStream: null, teacherSocketId: null,
+      localStream: null, remoteStream: null,
       isMuted: false, isVideoOff: false,
     });
   },

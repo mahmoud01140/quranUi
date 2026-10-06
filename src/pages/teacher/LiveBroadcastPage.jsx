@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   PhoneOff, UserCheck, BookOpen,
-  MessageSquare, X
+  MessageSquare, X, ClipboardList, Award
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/shared/Navbar';
@@ -10,11 +10,12 @@ import JitsiMeeting from '../../components/shared/JitsiMeeting';
 import LiveAttendanceDrawer from '../../components/shared/LiveAttendanceDrawer';
 import useAuthStore from '../../store/authStore';
 import useLiveStore from '../../store/liveStore';
-import { getSocket } from '../../services/socket';
 import api from '../../services/api';
 import { formatCountdown } from '../../utils/helpers';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 import WirdAssignModal from '../../components/shared/WirdAssignModal';
+import PreviousWirdModal from '../../components/shared/PreviousWirdModal';
+import RecitationEvalModal from '../../components/shared/RecitationEvalModal';
 import MushafSharePanel from '../../components/shared/MushafSharePanel';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import '../../components/halaqa/halaqa.css';
@@ -59,14 +60,15 @@ export default function LiveBroadcastPage() {
 
   // Wird assignment during live (shared modal)
   const [showWirdModal, setShowWirdModal] = useState(false);
+  // Previous wird (required recitation) + recitation evaluation
+  const [showPrevWirdModal, setShowPrevWirdModal] = useState(false);
+  const [showEvalModal, setShowEvalModal] = useState(false);
 
   // Shared mushaf (teacher-driven, student polls over HTTP)
   const [showMushaf, setShowMushaf] = useState(false);
   const [mushafSharing, setMushafSharing] = useState(false);
   const [mushafRange, setMushafRange] = useState(null);
   const [savingMushaf, setSavingMushaf] = useState(false);
-
-  const socket = getSocket();
 
   useEffect(() => {
     api.get('/exams/admin/all').then(res => {
@@ -93,7 +95,7 @@ export default function LiveBroadcastPage() {
       if (res.data?.session) {
         setSession(res.data.session);
         setIsBroadcasting(true);
-        socket?.emit('join-session-room', { sessionId });
+        // No socket room join — state is HTTP polling (Vercel-safe)
       } else {
         toast.error('تعذر العثور على الجلسة');
         navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users', { replace: true });
@@ -110,12 +112,9 @@ export default function LiveBroadcastPage() {
   useEffect(() => {
     if (isBroadcasting) {
       const timer = setInterval(() => setDuration(d => d + 1), 1000);
-      const heartbeat = setInterval(() => {
-        if (session?._id) socket?.emit('session-heartbeat', { sessionId: session._id });
-      }, 30000);
-      return () => { clearInterval(timer); clearInterval(heartbeat); };
+      return () => clearInterval(timer);
     }
-  }, [isBroadcasting, session, socket]);
+  }, [isBroadcasting]);
 
   const handleEndBroadcast = () => {
     setShowEndConfirm(true);
@@ -123,9 +122,7 @@ export default function LiveBroadcastPage() {
 
   const confirmEndBroadcast = async () => {
     setShowEndConfirm(false);
-    if (socket && session?._id) {
-      socket.emit('end-broadcast', { sessionId: session._id });
-    }
+    // PUT /end persists status=ended; students detect via polling (no socket emit needed)
     if (session?._id) {
       await api.put(`/live/${session._id}/end`, {}).catch(() => {});
     }
@@ -294,6 +291,34 @@ export default function LiveBroadcastPage() {
             <span className="hidden sm:inline">الورد</span>
           </button>
 
+          {/* Required recitation (previous wird) Button */}
+          <button
+            onClick={() => {
+              if (!studentId) { toast.error('لا يوجد طالب مرتبط بالجلسة'); return; }
+              setShowPrevWirdModal(true);
+            }}
+            className="hq-action"
+            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13 }}
+            title="الورد المطلوب تسميعه — آخر ورد أُسند قبل اليوم"
+          >
+            <ClipboardList size={16} />
+            <span className="hidden sm:inline">المطلوب تسميعه</span>
+          </button>
+
+          {/* Recitation evaluation Button */}
+          <button
+            onClick={() => {
+              if (!studentId) { toast.error('لا يوجد طالب مرتبط بالجلسة'); return; }
+              setShowEvalModal(true);
+            }}
+            className="hq-action"
+            style={{ background: '#F8EDD3', border: '1px solid #D9A441', color: '#7C5A12', padding: '0 14px', fontSize: 13 }}
+            title="تقييم تسميع الطالب ووضع ملاحظات تظهر في التقارير"
+          >
+            <Award size={16} />
+            <span className="hidden sm:inline">تقييم التسميع</span>
+          </button>
+
           {/* Shared mushaf Button */}
           <button
             onClick={openMushaf}
@@ -356,6 +381,22 @@ export default function LiveBroadcastPage() {
         studentId={studentId}
         studentName={studentName}
         onClose={() => setShowWirdModal(false)}
+      />
+
+      {/* Required recitation: previous wird (read-only) */}
+      <PreviousWirdModal
+        open={showPrevWirdModal}
+        studentId={studentId}
+        studentName={studentName}
+        onClose={() => setShowPrevWirdModal(false)}
+      />
+
+      {/* Recitation evaluation + notes (visible in reports & parent) */}
+      <RecitationEvalModal
+        open={showEvalModal}
+        studentId={studentId}
+        studentName={studentName}
+        onClose={() => setShowEvalModal(false)}
       />
 
       {/* Shared mushaf overlay sheet */}

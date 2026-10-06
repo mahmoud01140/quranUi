@@ -187,7 +187,11 @@ export default function AdminExamResultsPage() {
                 {reviewModal.oralRecordings?.map((rec, i) => (
                   <div key={i} style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 10 }}>
                     <p style={{ margin: '0 0 6px', fontSize: 12, color: HQ.MUTED }}>تسجيل {i + 1}</p>
-                    <audio controls src={rec.audioUrl} style={{ width: '100%', height: 36 }} />
+                    {rec.audioUrl ? (
+                      <audio controls src={rec.audioUrl} style={{ width: '100%', height: 36 }} />
+                    ) : (
+                      <p style={{ margin: 0, fontSize: 12, color: HQ.MUTED }}>حُذف التسجيل تلقائياً لتوفير المساحة 🧹 (التقييم محفوظ)</p>
+                    )}
                   </div>
                 ))}
               </div>

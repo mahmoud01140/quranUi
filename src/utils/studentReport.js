@@ -63,6 +63,29 @@ function renderExams(ex) {
       : '<p class="muted">لا توجد نتائج امتحانات بعد.</p>'}`;
 }
 
+const RECITE_STATUS_AR = { pending: 'بانتظار', in_progress: 'جارٍ', completed: 'مكتمل', reviewed: 'مقيّم ✅' };
+
+function renderRecitation(rec) {
+  if (!rec) return '';
+  const rows = (rec.history || []).map((h, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${fmtDate(h.date)}</td>
+      <td>${esc(h.newHifz || '—')}${h.newHifzScore !== null && h.newHifzScore !== undefined ? ` (${h.newHifzScore}%)` : ''}</td>
+      <td>${esc(h.nearRevision || '—')}${h.nearRevisionScore !== null && h.nearRevisionScore !== undefined ? ` (${h.nearRevisionScore}%)` : ''}</td>
+      <td>${RECITE_STATUS_AR[h.status] || esc(h.status || '—')}</td>
+      <td>${esc(h.teacherNotes || '—')}</td>
+    </tr>`).join('');
+  return `
+    <h2>التسميع والورد اليومي</h2>
+    <div class="cards">
+      <div class="card"><b>${rec.total ?? 0}</b><span>أيام مسجلة</span></div>
+      <div class="card"><b>${rec.evaluated ?? 0}</b><span>أيام مقيّمة</span></div>
+    </div>
+    ${rows ? `<table><thead><tr><th>#</th><th>التاريخ</th><th>الحفظ الجديد (الدرجة)</th><th>الماضي (الدرجة)</th><th>الحالة</th><th>ملاحظات المعلم</th></tr></thead><tbody>${rows}</tbody></table>`
+      : '<p class="muted">لا توجد أوراد مسجلة بعد.</p>'}`;
+}
+
 // renderer عام لأي قسم مستقبلي: كائنات/قوائم تُعرض كجداول تلقائياً
 function renderGeneric(title, data) {
   if (data === null || data === undefined) return '';
@@ -82,7 +105,7 @@ function renderGeneric(title, data) {
   return `<h2>${esc(title)}</h2><p>${esc(data)}</p>`;
 }
 
-const SECTION_TITLES = { attendance: 'الحضور والغياب', exams: 'نتائج الامتحانات' };
+const SECTION_TITLES = { attendance: 'الحضور والغياب', exams: 'نتائج الامتحانات', recitation: 'التسميع والورد اليومي' };
 
 function buildHtml(report) {
   const { student: s, sections = {}, generatedAt } = report;
@@ -91,6 +114,7 @@ function buildHtml(report) {
   const body = Object.entries(sections).map(([key, data]) => {
     if (key === 'attendance') return renderAttendance(data);
     if (key === 'exams') return renderExams(data);
+    if (key === 'recitation') return renderRecitation(data);
     return renderGeneric(SECTION_TITLES[key] || key, data);
   }).join('');
 

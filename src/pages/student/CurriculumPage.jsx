@@ -222,14 +222,14 @@ export default function CurriculumPage() {
                                   <Video size={15} /> انضم
                                 </Link>
                               )}
-                              <Link to={`/student/lessons/${lid}/discussion`} className="hq-action"
-                                aria-label={`نقاش ${lesson.title}`}
+                              <Link to="/student/discussion" className="hq-action"
+                                aria-label="تواصل مع الإدارة"
                                 style={{
                                   background: HQ.PAPER, color: HQ.MENTOR,
                                   border: `1.5px solid ${HQ.LINE}`,
                                   padding: '0 16px', fontSize: 13, textDecoration: 'none',
                                 }}>
-                                <MessageCircle size={15} /> نقاش الحصة
+                                <MessageCircle size={15} /> استفسار للإدارة
                               </Link>
                             </span>
                           </div>

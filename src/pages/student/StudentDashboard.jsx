@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   BookOpen, Check, Play, ChevronLeft, RotateCcw, Sparkles,
-  CheckCircle, FileText, Award, CalendarCheck,
+  CheckCircle, FileText, Award, CalendarCheck, Users, Copy, Share2, RefreshCw, CheckCheck,
 } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import PageLayout from '../../components/shared/PageLayout';
@@ -13,7 +13,7 @@ import {
   getLevelLabel, formatDateAr, getSmartDateLabel, formatTime12Ar,
 } from '../../utils/helpers';
 import api from '../../services/api';
-import useSocket from '../../hooks/useSocket';
+import usePolling from '../../hooks/usePolling';
 import toast from 'react-hot-toast';
 import '../../components/halaqa/halaqa.css';
 import { HQ, HqBadge } from '../../components/halaqa/primitives';
@@ -66,26 +66,35 @@ export default function StudentDashboard() {
   const [activeLiveSession, setActiveLiveSession] = useState(null);
   const [ready, setReady] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [linkCodeData, setLinkCodeData] = useState(null);
+  const [regeneratingCode, setRegeneratingCode] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
 
   const myId = user?._id?.toString();
   const loadingRef = useRef(false);
 
-  useSocket({
-    'live-started': () => {
-      api.get('/live/active/me').then(res => {
-        if (res.data?.session) setActiveLiveSession(res.data.session);
-      }).catch(() => {});
-    },
-    'broadcast-started': () => {
-      api.get('/live/active/me').then(res => {
-        if (res.data?.session) setActiveLiveSession(res.data.session);
-      }).catch(() => {});
-    },
-    'broadcast-ended': () => {
-      setActiveLiveSession(null);
-    },
-  });
+  // Vercel-safe: poll active live session (replaces socket.io live-started/broadcast events).
+  // Shows toast only on transition null -> live to avoid spam.
+  const prevLiveIdRef = useRef(null);
+  usePolling(async () => {
+    try {
+      const res = await api.get('/live/active/me');
+      const s = res.data?.session || null;
+      setActiveLiveSession((prev) => {
+        const prevId = prev?._id?.toString() || null;
+        const nextId = s?._id?.toString() || null;
+        if (nextId && nextId !== prevId && prevLiveIdRef.current !== nextId) {
+          prevLiveIdRef.current = nextId;
+          toast.success('بدأ المعلم الحصة المباشرة الآن! 🎙️');
+        }
+        if (!nextId) prevLiveIdRef.current = null;
+        // Avoid extra renders when id unchanged
+        if (prevId === nextId) return prev;
+        return s;
+      });
+    } catch (_) {}
+  }, 10000);
 
   const loadLocal = () => {
     if (loadingRef.current) return;
@@ -114,6 +123,10 @@ export default function StudentDashboard() {
       settle(async () => {
         const res = await api.get('/payments/my-history');
         setSubscription(res.data?.subscription || null);
+      }),
+      settle(async () => {
+        const res = await api.get('/parents/my-link-code');
+        setLinkCodeData(res.data || null);
       }),
     ]).then(() => {
       if (ok === 0) setLoadFailed(true);
@@ -150,6 +163,36 @@ export default function StudentDashboard() {
       if (newStatus === 'completed') toast.success('بارك الله فيك! تم إنجاز هذا الجزء من الورد');
     } catch {
       toast.error('حدث خطأ في تحديث حالة الورد');
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!linkCodeData?.code) return;
+    navigator.clipboard.writeText(linkCodeData.code);
+    setCopiedCode(true);
+    toast.success('تم نسخ رمز ولي الأمر بنجاح!');
+    setTimeout(() => setCopiedCode(false), 3000);
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!linkCodeData?.code) return;
+    const formattedCode = `${linkCodeData.code.slice(0, 3)} ${linkCodeData.code.slice(3)}`;
+    const text = encodeURIComponent(
+      `السلام عليكم ورحمة الله وبركاته،\nهذا هو رمز ربط حسابي في منصة تحفيظ القرآن الكريم لمتابعة الورد والدرجات والحصص:\n🔢 *${formattedCode}*\n\nيمكنك تسجيل الدخول كولي أمر ثم إدخال هذا الرمز لربط الحساب مباشرة.`
+    );
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  const handleRegenerateCode = async () => {
+    setRegeneratingCode(true);
+    try {
+      const res = await api.post('/parents/regenerate-link-code');
+      setLinkCodeData(res.data);
+      toast.success('تم إصدار رمز ربط جديد بنجاح');
+    } catch {
+      toast.error('تعذر تجديد الرمز حالياً');
+    } finally {
+      setRegeneratingCode(false);
     }
   };
 
@@ -680,6 +723,144 @@ export default function StudentDashboard() {
                   )}
                 </div>
               )}
+            </section>
+
+            {/* Parent Link Code Card */}
+            <section
+              aria-label="رمز ربط ولي الأمر"
+              style={{
+                background: HQ.SURFACE,
+                border: `1px solid ${HQ.LINE}`,
+                borderRadius: 16,
+                padding: '18px 20px',
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flex: 1, minWidth: 260 }}>
+                  <span
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: HQ.MENTOR_WASH,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flex: 'none',
+                      border: `1px solid ${HQ.MENTOR}33`
+                    }}
+                  >
+                    <Users size={22} color={HQ.MENTOR} />
+                  </span>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                      <strong style={{ fontSize: 16, color: HQ.INK }}>
+                        رمز ربط ولي الأمر
+                      </strong>
+                      {linkCodeData?.linkedParents?.length > 0 ? (
+                        <HqBadge tone="mentor">
+                          مرتبط بـ ({linkCodeData.linkedParents.map(p => p.name).join('، ')})
+                        </HqBadge>
+                      ) : (
+                        <HqBadge tone="neutral">غير مرتبط بولي أمر</HqBadge>
+                      )}
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, color: HQ.MUTED, lineHeight: 1.6 }}>
+                      {linkCodeData?.linkedParents?.length > 0
+                        ? 'حسابك مرتبط بولي أمرك لمتابعة وردك اليومي، حضور الحلقات، والدرجات.'
+                        : 'أعطِ هذا الرمز لوالدك أو والدتك ليتمكنا من ربط حسابهما ومتابعة حفظك ودرجاتك.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 6-digit Code Pill & Quick Action Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div
+                    style={{
+                      background: HQ.PAPER,
+                      border: `1px dashed ${HQ.MENTOR}`,
+                      borderRadius: 12,
+                      padding: '6px 16px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <span style={{ fontSize: 10, color: HQ.MUTED, display: 'block', marginBottom: 2 }}>
+                      رمزك المكون من 6 أرقام
+                    </span>
+                    <strong
+                      style={{
+                        fontFamily: 'monospace',
+                        fontSize: 20,
+                        letterSpacing: '3px',
+                        color: HQ.MENTOR_DEEP,
+                        direction: 'ltr',
+                        display: 'inline-block'
+                      }}
+                    >
+                      {linkCodeData?.code ? `${linkCodeData.code.slice(0, 3)} ${linkCodeData.code.slice(3)}` : '------'}
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button
+                      type="button"
+                      onClick={handleCopyCode}
+                      title="نسخ الرمز"
+                      className="hq-action"
+                      style={{
+                        background: copiedCode ? HQ.MENTOR : HQ.SURFACE,
+                        border: `1px solid ${copiedCode ? HQ.MENTOR : HQ.LINE}`,
+                        color: copiedCode ? '#fff' : HQ.INK,
+                        padding: '0 12px',
+                        height: 38,
+                        fontSize: 13,
+                        borderRadius: 10
+                      }}
+                    >
+                      {copiedCode ? <CheckCheck size={15} /> : <Copy size={15} />}
+                      <span>{copiedCode ? 'تم النسخ' : 'نسخ'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleShareWhatsApp}
+                      title="إرسال عبر واتساب"
+                      className="hq-action"
+                      style={{
+                        background: '#25D366',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '0 12px',
+                        height: 38,
+                        fontSize: 13,
+                        borderRadius: 10
+                      }}
+                    >
+                      <Share2 size={15} />
+                      <span className="m-hide-sm">واتساب</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRegenerateCode}
+                      disabled={regeneratingCode}
+                      title="تجديد الرمز"
+                      className="hq-action"
+                      style={{
+                        background: HQ.SURFACE,
+                        border: `1px solid ${HQ.LINE}`,
+                        color: HQ.MUTED,
+                        padding: '0 10px',
+                        height: 38,
+                        borderRadius: 10
+                      }}
+                    >
+                      <RefreshCw size={14} className={regeneratingCode ? 'animate-spin' : ''} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* Next Majlis / Class Info */}

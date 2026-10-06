@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
-import useSocket from '../../hooks/useSocket';
 import api from '../../services/api';
 import { getLevelLabel, formatTime12Ar } from '../../utils/helpers';
 import './Onboarding.css';
@@ -46,22 +45,28 @@ export default function WaitingApprovalPage() {
     return 'unsupported';
   });
 
-  // Real-time synchronization via Socket.io
-  useSocket({
-    notification: async (notif) => {
-      toast.success(notif?.title || 'تحديث جديد بخصوص مراجعة حسابك');
-      const fresh = await refreshUser();
-      if (fresh?.assignedLevel) {
-        toast.success('مبارك! تم اعتماد مستواك بنجاح 🎉');
-      }
-    },
-  });
-
-  // Auto-poll every 15 seconds to ensure fresh state
+  // Vercel-safe: poll user + notifications every 15s (replaces socket.io notification push).
+  // Toasts once when level gets approved.
   useEffect(() => {
+    let seenToast = false;
     const interval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
       try {
-        await refreshUser();
+        const fresh = await refreshUser();
+        if (fresh?.assignedLevel && !seenToast) {
+          seenToast = true;
+          toast.success('مبارك! تم اعتماد مستواك بنجاح 🎉');
+        }
+        // Also surface new DB notifications as toasts
+        try {
+          const res = await api.get('/notifications');
+          const unread = (res.data?.notifications || []).filter((n) => !n.isRead).slice(0, 3);
+          unread.forEach((n) => {
+            if (n.type === 'grade_posted' || n.type === 'group_assigned') {
+              toast.success(n.title || 'تحديث جديد بخصوص مراجعة حسابك');
+            }
+          });
+        } catch (_) {}
       } catch (_) {}
     }, 15000);
     return () => clearInterval(interval);

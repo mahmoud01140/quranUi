@@ -9,7 +9,10 @@ import Pagination from '../../components/shared/Pagination';
 import usePagination from '../../hooks/usePagination';
 import useResourceStore from '../../store/resourceStore';
 import { timeAgoAr, formatFileSize } from '../../utils/helpers';
+import { uploadDirectToCloudinary } from '../../utils/cloudinaryUpload';
 import toast from 'react-hot-toast';
+
+
 import '../../components/halaqa/halaqa.css';
 import { HQ } from '../../components/halaqa/primitives';
 
@@ -32,7 +35,7 @@ const field = {
 };
 
 export default function AdminResourcesPage() {
-  const { resources, isLoading, fetchGeneralResources, uploadResource, deleteResource, trackDownload } = useResourceStore();
+  const { resources, isLoading, fetchGeneralResources, uploadResourceFromUrl, deleteResource, trackDownload } = useResourceStore();
 
   const [showUpload, setShowUpload] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -51,26 +54,49 @@ export default function AdminResourcesPage() {
   );
   const resourcesPagination = usePagination(filtered, 6);
 
+  const [uploadProgress, setUploadProgress] = useState(null); // null | 0..100
+
+  const resetUploadForm = () => {
+    setShowUpload(false);
+    setForm({ title: '', description: '', category: 'other' });
+    setSelectedFile(null);
+    setUploadProgress(null);
+  };
+
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!form.title || !selectedFile) return toast.error('العنوان والملف مطلوبان');
 
     setUploading(true);
+    setUploadProgress(0);
     try {
-      const formData = new FormData();
-      formData.append('resource', selectedFile);
-      formData.append('title', form.title);
-      formData.append('description', form.description);
-      formData.append('category', form.category);
-      await uploadResource(formData);
-      toast.success('تم رفع الملف في المكتبة العامة بنجاح');
-      setShowUpload(false);
-      setForm({ title: '', description: '', category: 'other' });
-      setSelectedFile(null);
+      // Browser → Cloudinary مباشرة — الملف لا يمر بالسيرفر أبداً
+      const { url, publicId, resourceType } = await uploadDirectToCloudinary(
+        selectedFile,
+        {
+          kind: 'resource',
+          onProgress: (p) => setUploadProgress(Math.round(p * 100)),
+        }
+      );
+      // أُرسل الـ URL فقط للـ backend (JSON فقط، لا multipart)
+      await uploadResourceFromUrl({
+        title: form.title,
+        description: form.description,
+        category: form.category,
+        fileUrl: url,
+        filePublicId: publicId,
+        fileResourceType: resourceType,
+        fileName: selectedFile.name,
+        fileSize: selectedFile.size,
+        mimeType: selectedFile.type,
+      });
+      toast.success('تم رفع الملف في المكتبة العامة بنجاح ✅');
+      resetUploadForm();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'خطأ في رفع الملف');
+      toast.error(err?.response?.data?.message || err.message || 'فشل الرفع إلى Cloudinary');
     }
     setUploading(false);
+    setUploadProgress(null);
   };
 
   const handleDelete = async (id) => {
@@ -230,13 +256,30 @@ export default function AdminResourcesPage() {
                   )}
                 </div>
 
+                {/* شريط تقدم الرفع المباشر */}
+                {uploadProgress !== null && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span className="text-xs font-bold" style={{ color: HQ.MENTOR }}>جارٍ الرفع إلى Cloudinary...</span>
+                      <span className="text-xs" style={{ color: HQ.MUTED, fontVariantNumeric: 'tabular-nums' }}>{uploadProgress}%</span>
+                    </div>
+                    <div role="progressbar" aria-valuenow={uploadProgress} aria-valuemin={0} aria-valuemax={100}
+                      style={{ height: 8, borderRadius: 8, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${uploadProgress}%`, background: HQ.MENTOR, transition: 'width 0.15s ease' }} />
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button type="submit" disabled={uploading} style={{ ...primaryBtn, flex: 1, opacity: uploading ? 0.6 : 1 }}>
                     {uploading ? <RefreshCw size={15} className="animate-spin" aria-hidden /> : <Check size={15} aria-hidden />}
-                    {uploading ? 'جارٍ الرفع...' : 'رفع المورد'}
+                    {uploading
+                      ? uploadProgress !== null ? `جارٍ الرفع... ${uploadProgress}%` : 'جارٍ الحفظ...'
+                      : 'رفع المورد'}
                   </button>
                   <button type="button" onClick={() => setShowUpload(false)} style={ghostBtn}>إلغاء</button>
                 </div>
+
               </motion.form>
             )}
           </AnimatePresence>

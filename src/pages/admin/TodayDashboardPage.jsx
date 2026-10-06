@@ -10,7 +10,12 @@ import toast from 'react-hot-toast';
 import PageLayout from '../../components/shared/PageLayout';
 import api from '../../services/api';
 import { getLevelLabel, formatDateAr, formatTime12Ar, timeAgoAr } from '../../utils/helpers';
+import { resolveSurveyAnswer } from '../../utils/surveyDisplay';
+import { notifySubscriptionWarning, fetchSubscriptionWarning, isBlockingWarning } from '../../utils/subscriptionWarning';
+import ConfirmModal from '../../components/shared/ConfirmModal';
+import StudentLessonsModal from '../../components/shared/StudentLessonsModal';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import PhoneChip from '../../components/shared/PhoneChip';
 import SessionTimePicker from '../../components/shared/SessionTimePicker';
 import WirdAssignModal from '../../components/shared/WirdAssignModal';
 import '../../components/halaqa/halaqa.css';
@@ -101,6 +106,11 @@ export default function TodayDashboardPage() {
   // Live modal
   const [liveUser, setLiveUser] = useState(null);
   const [liveForm, setLiveForm] = useState({ title: '', resources: '', description: '' });
+  // Pre-start subscription confirm: { u, payload, warning } — null when idle
+  const [subConfirm, setSubConfirm] = useState(null);
+
+  // Student lessons modal (shared component — same UX as Users section)
+  const [lessonsModalUser, setLessonsModalUser] = useState(null);
 
   // Review modal
   const [reviewUser, setReviewUser] = useState(null);
@@ -166,19 +176,30 @@ export default function TodayDashboardPage() {
   const paymentsExtra = Math.max(0, paymentsTotal - PREVIEW_LIMIT);
   const waitingExtra = Math.max(0, waitingTotal - PREVIEW_LIMIT);
 
-  // ── بدء بث ──
+  // ── بدء بث (يفحص الاشتراك أولاً، ويطلب تأكيداً عند انتهائه/غيابه) ──
   const handleConfirmLive = async () => {
-    if (!liveUser) return;
+    if (!liveUser || actingId) return;
     const u = liveUser;
+    const payload = {};
+    if (liveForm.title?.trim()) payload.title = liveForm.title.trim();
+    if (liveForm.resources?.trim()) payload.resources = liveForm.resources.trim();
+    if (liveForm.description?.trim()) payload.description = liveForm.description.trim();
+    const warning = await fetchSubscriptionWarning(u._id);
+    if (isBlockingWarning(warning)) {
+      setSubConfirm({ u, payload, warning });
+      return;
+    }
+    if (warning) notifySubscriptionWarning(warning); // expiring_soon: info only
+    await doStartLive(u, payload);
+  };
+
+  const doStartLive = async (u, payload) => {
     setActingId(u._id);
     try {
-      const payload = {};
-      if (liveForm.title?.trim()) payload.title = liveForm.title.trim();
-      if (liveForm.resources?.trim()) payload.resources = liveForm.resources.trim();
-      if (liveForm.description?.trim()) payload.description = liveForm.description.trim();
       const res = await api.post(`/live/student/${u._id}/start`, payload);
       toast.success('تم إنشاء الدرس وبدء البث المباشر مع الطالب');
       setLiveUser(null);
+      setSubConfirm(null);
       navigate('/admin/live', {
         state: {
           sessionId: res.data.session._id,
@@ -429,6 +450,11 @@ export default function TodayDashboardPage() {
                                 style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                                 <BookOpen size={15} /> الورد
                               </button>
+                              <button type="button" onClick={() => setLessonsModalUser(u)} className="hq-action"
+                                aria-label={`عرض دروس ${u.firstName} ${u.lastName}`}
+                                style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, color: HQ.MENTOR, padding: '0 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 800 }}>
+                                <ClipboardList size={15} /> الدروس
+                              </button>
                             </div>
                           </div>
                         </li>
@@ -467,7 +493,7 @@ export default function TodayDashboardPage() {
                           <div style={{ flex: 1, minWidth: 150 }}>
                             <strong style={{ fontSize: 15, color: HQ.INK }}>{p.user?.firstName} {p.user?.lastName}</strong>
                             <p style={{ margin: '2px 0 0', fontSize: 13, color: HQ.MUTED, fontVariantNumeric: 'tabular-nums' }}>
-                              {p.amount} {p.currency === 'EGP' ? 'ج.م' : 'ر.س'} · {p.method === 'vodafone_cash' ? 'فودافون كاش' : 'انستاباي'}
+                              {p.amount} ج.م · {p.method === 'vodafone_cash' ? 'فودافون كاش' : 'انستاباي'}
                               {p.createdAt ? ` · ${formatDateAr(p.createdAt)}` : ''}
                             </p>
                           </div>
@@ -533,6 +559,7 @@ export default function TodayDashboardPage() {
                                   ? <span style={{ fontVariantNumeric: 'tabular-nums' }}>التحريري {u.placementExamScore}%</span>
                                   : null}
                                 {u.createdAt ? <span>· منذ {timeAgoAr(u.createdAt)}</span> : null}
+                                <PhoneChip phone={u.phone} />
                               </p>
                             </div>
                             <div className="m-today-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -669,12 +696,15 @@ export default function TodayDashboardPage() {
                   <p style={{ margin: '0 0 16px', fontSize: 13, color: HQ.MUTED }}>لا توجد إجابات مسجلة.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                    {reviewData.surveyAnswers.map((sa, idx) => (
-                      <div key={idx} style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '10px 14px' }}>
-                        <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: HQ.MUTED }}>س{idx + 1}: {sa.questionText || 'سؤال الاستبيان'}</p>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: HQ.INK }}>{sa.answerText || sa.answer || '—'}</p>
-                      </div>
-                    ))}
+                    {reviewData.surveyAnswers.map((sa, idx) => {
+                      const resolved = resolveSurveyAnswer(sa, idx, reviewUser?.registrationType);
+                      return (
+                        <div key={idx} style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '10px 14px' }}>
+                          <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: HQ.MUTED }}>س{idx + 1}: {resolved.questionText}</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: HQ.INK }}>{resolved.answerText}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 <h4 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 900, color: HQ.INK }}>التسجيلات الشفهية ({reviewData.audioList.length})</h4>
@@ -711,7 +741,7 @@ export default function TodayDashboardPage() {
         {approvePayment && (
           <Modal title="اعتماد الدفعة وتفعيل الاشتراك" onClose={() => setApprovePayment(null)} maxWidth={440} labelledBy="approve-title">
             <p style={{ margin: '0 0 16px', fontSize: 14, color: HQ.MUTED }}>
-              الطالب: <strong style={{ color: HQ.INK }}>{approvePayment.user?.firstName} {approvePayment.user?.lastName}</strong> · {approvePayment.amount} {approvePayment.currency === 'EGP' ? 'ج.م' : 'ر.س'}
+              الطالب: <strong style={{ color: HQ.INK }}>{approvePayment.user?.firstName} {approvePayment.user?.lastName}</strong> · {approvePayment.amount} ج.م
             </p>
             <span id="approve-days-label" style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 8 }}>مدة التفعيل بالأيام</span>
             <div role="group" aria-labelledby="approve-days-label" style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -731,6 +761,23 @@ export default function TodayDashboardPage() {
           </Modal>
         )}
 
+        {/* Pre-start subscription confirm: expired/unsubscribed student */}
+        <ConfirmModal
+          open={Boolean(subConfirm)}
+          title="هل تريد الاستمرار في البث؟"
+          message={subConfirm?.warning?.message || ''}
+          confirmLabel="نعم، ابدأ البث"
+          cancelLabel="تراجع"
+          danger
+          busy={actingId === subConfirm?.u?._id}
+          onConfirm={() => {
+            const s = subConfirm;
+            setSubConfirm(null);
+            if (s) doStartLive(s.u, s.payload);
+          }}
+          onClose={() => setSubConfirm(null)}
+        />
+
         {/* Reject payment modal */}
         {rejectPayment && (
           <Modal title="رفض الدفعة" onClose={() => setRejectPayment(null)} maxWidth={440} labelledBy="reject-title">
@@ -748,6 +795,9 @@ export default function TodayDashboardPage() {
             </div>
           </Modal>
         )}
+
+        {/* Student lessons modal (shared component — same UX as Users section) */}
+        <StudentLessonsModal user={lessonsModalUser} onClose={() => setLessonsModalUser(null)} />
       </div>
     </PageLayout>
   );

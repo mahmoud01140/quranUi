@@ -368,7 +368,11 @@ export default function TeacherReviewCenterPage() {
                                   {taskData?.arabicText || recitationQ?.arabicText}
                                 </p>
                               )}
-                              <audio src={rec.audioUrl} controls className="w-full" style={{ height: 36 }} />
+                              {rec.audioUrl ? (
+                                <audio src={rec.audioUrl} controls className="w-full" style={{ height: 36 }} />
+                              ) : (
+                                <p style={{ margin: 0, fontSize: 12, color: HQ.MUTED }}>حُذف التسجيل تلقائياً لتوفير المساحة 🧹 (التقييم محفوظ)</p>
+                              )}
                             </div>
                           );
                         })}

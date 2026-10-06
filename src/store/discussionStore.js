@@ -1,99 +1,113 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
-// Lesson-scoped discussion — pure HTTP polling, no socket.io.
+// Direct Student-Admin Discussion Store (Pure HTTP polling, 100% Vercel-Safe, Zero Sockets)
 const useDiscussionStore = create((set, get) => ({
-  lessonId: null,
-  lessonTitle: '',
-  groupId: null,
-  groupName: '',
+  thread: null,
   messages: [],
-  pinnedMessages: [],
+  conversations: [],
+  currentStudent: null,
   isLoading: false,
-  hasMore: false,
-  totalMessages: 0,
+  isSending: false,
 
-  fetchLessonDiscussion: async (lessonId, { silent = false } = {}) => {
-    if (!lessonId) return;
+  // ─── Student: Load My Conversation Thread with Admin ─────────
+  fetchMyThread: async ({ silent = false } = {}) => {
     if (!silent) set({ isLoading: true });
     try {
-      const res = await api.get(`/discussions/lesson/${lessonId}`);
-      const d = res.data.discussion;
+      const res = await api.get('/discussions/my-thread');
       set({
-        lessonId,
-        lessonTitle: d.lessonTitle || '',
-        groupId: d.group || null,
-        groupName: d.groupName || '',
-        messages: d.messages || [],
-        pinnedMessages: d.pinnedMessages || [],
-        totalMessages: d.totalMessages || 0,
-        hasMore: !!d.hasMore,
+        thread: res.data.thread,
+        messages: res.data.messages || [],
         isLoading: false,
       });
-      return d;
+      return res.data;
     } catch (error) {
       if (!silent) set({ isLoading: false });
       throw error;
     }
   },
 
-  sendLessonMessage: async (lessonId, content, replyTo = null) => {
-    const res = await api.post(`/discussions/lesson/${lessonId}/messages`, {
-      content,
-      type: 'text',
-      replyTo,
-    });
-    const message = res.data.message;
-    // Append locally for instant feedback, then the poller reconciles
-    set((state) => {
-      if (state.lessonId !== lessonId) return state;
-      if (state.messages.some(m => m._id === message._id)) return state;
-      return { messages: [...state.messages, message] };
-    });
-    return message;
+  // ─── Student: Send Message to Admin ──────────────────────────
+  sendStudentMessage: async (content) => {
+    set({ isSending: true });
+    try {
+      const res = await api.post('/discussions/my-thread', { content });
+      const newMsg = res.data.data;
+      set((state) => {
+        if (state.messages.some(m => m._id === newMsg._id)) return state;
+        return { messages: [...state.messages, newMsg] };
+      });
+      return newMsg;
+    } finally {
+      set({ isSending: false });
+    }
   },
 
-  pinLessonMessage: async (lessonId, messageId) => {
-    const res = await api.put(`/discussions/lesson/${lessonId}/messages/${messageId}/pin`);
-    const { isPinned } = res.data;
-    set((state) => {
-      if (state.lessonId !== lessonId) return state;
-      return {
-        messages: state.messages.map(m =>
-          m._id === messageId ? { ...m, isPinned } : m
-        ),
-        pinnedMessages: isPinned
-          ? [...state.pinnedMessages.filter(m => m._id !== messageId),
-             { ...state.messages.find(m => m._id === messageId), isPinned }]
-          : state.pinnedMessages.filter(m => m._id !== messageId),
-      };
-    });
-    return res.data;
+  // ─── Admin: List All Student Conversations ───────────────────
+  fetchAdminConversations: async (q = '') => {
+    set({ isLoading: true });
+    try {
+      const res = await api.get('/discussions/admin/conversations', { params: { q } });
+      set({
+        conversations: res.data.conversations || [],
+        isLoading: false,
+      });
+      return res.data.conversations;
+    } catch (error) {
+      set({ isLoading: false });
+      throw error;
+    }
   },
 
-  deleteLessonMessage: async (lessonId, messageId) => {
-    await api.delete(`/discussions/lesson/${lessonId}/messages/${messageId}`);
-    set((state) => {
-      if (state.lessonId !== lessonId) return state;
-      return {
-        messages: state.messages.map(m =>
-          m._id === messageId ? { ...m, isDeleted: true, content: 'تم حذف هذه الرسالة' } : m
-        ),
-        pinnedMessages: state.pinnedMessages.filter(m => m._id !== messageId),
-      };
-    });
+  // ─── Admin: Load Conversation with Specific Student ──────────
+  fetchAdminStudentThread: async (studentId, { silent = false } = {}) => {
+    if (!silent) set({ isLoading: true });
+    try {
+      const res = await api.get(`/discussions/admin/conversations/${studentId}`);
+      set({
+        currentStudent: res.data.student,
+        thread: res.data.thread,
+        messages: res.data.messages || [],
+        isLoading: false,
+      });
+      return res.data;
+    } catch (error) {
+      if (!silent) set({ isLoading: false });
+      throw error;
+    }
+  },
+
+  // ─── Admin: Send Reply to Student ────────────────────────────
+  sendAdminReply: async (studentId, content) => {
+    set({ isSending: true });
+    try {
+      const res = await api.post(`/discussions/admin/conversations/${studentId}`, { content });
+      const newMsg = res.data.data;
+      set((state) => {
+        if (state.messages.some(m => m._id === newMsg._id)) return state;
+        return { messages: [...state.messages, newMsg] };
+      });
+      return newMsg;
+    } finally {
+      set({ isSending: false });
+    }
+  },
+
+  // ─── Legacy compatibility fallbacks ──────────────────────────
+  fetchLessonDiscussion: async (lessonId, opts) => {
+    return get().fetchMyThread(opts);
+  },
+  sendLessonMessage: async (lessonId, content) => {
+    return get().sendStudentMessage(content);
   },
 
   reset: () => set({
-    lessonId: null,
-    lessonTitle: '',
-    groupId: null,
-    groupName: '',
+    thread: null,
     messages: [],
-    pinnedMessages: [],
+    conversations: [],
+    currentStudent: null,
     isLoading: false,
-    hasMore: false,
-    totalMessages: 0,
+    isSending: false,
   }),
 }));
 

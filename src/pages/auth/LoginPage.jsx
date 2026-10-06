@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, MotionConfig } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, BookOpen, ArrowRight, Info, CircleAlert } from 'lucide-react';
+import { Eye, EyeOff, Mail, Smartphone, Lock, BookOpen, ArrowRight, Info, CircleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
@@ -11,7 +11,7 @@ export default function LoginPage() {
   const { login, isLoading } = useAuthStore();
   const navigate = useNavigate();
   const [showPass, setShowPass] = useState(false);
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [isFocused, setIsFocused] = useState({});
@@ -19,12 +19,12 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = {};
-    if (!email) errs.email = 'البريد الإلكتروني مطلوب';
+    if (!identifier.trim()) errs.identifier = 'رقم الهاتف أو البريد الإلكتروني مطلوب';
     if (!password) errs.password = 'كلمة المرور مطلوبة';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     try {
-      const data = await login(email, password);
+      const data = await login(identifier.trim(), password);
       toast.success(`مرحباً ${data.user.firstName}!`);
       const u = data.user;
 
@@ -85,32 +85,40 @@ export default function LoginPage() {
               </div>
             )}
 
-            {/* Email field */}
+            {/* Phone-or-email identifier field */}
             <div>
-              <label htmlFor="login-email" className="auth-label">البريد الإلكتروني</label>
+              <label htmlFor="login-identifier" className="auth-label">رقم الهاتف أو البريد الإلكتروني</label>
               <div className="relative">
-                <Mail
-                  aria-hidden
-                  className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 ${isFocused.email ? 'text-[#177B58]' : 'text-[#756E85]'}`}
-                />
+                {identifier.includes('@') ? (
+                  <Mail
+                    aria-hidden
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 ${isFocused.identifier ? 'text-[#177B58]' : 'text-[#756E85]'}`}
+                  />
+                ) : (
+                  <Smartphone
+                    aria-hidden
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors duration-200 ${isFocused.identifier ? 'text-[#177B58]' : 'text-[#756E85]'}`}
+                  />
+                )}
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(p => ({ ...p, email: null })); }}
-                  onFocus={() => handleFocus('email')}
-                  onBlur={() => handleBlur('email')}
+                  type="text"
+                  inputMode={identifier.includes('@') ? 'email' : 'tel'}
+                  value={identifier}
+                  onChange={(e) => { setIdentifier(e.target.value); if (errors.identifier) setErrors(p => ({ ...p, identifier: null })); }}
+                  onFocus={() => handleFocus('identifier')}
+                  onBlur={() => handleBlur('identifier')}
                   className="auth-input pr-10"
                   style={{ direction: 'ltr', textAlign: 'left' }}
-                  placeholder="your@email.com"
-                  id="login-email"
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={errors.email ? 'login-email-error' : undefined}
+                  placeholder="01xxxxxxxxx"
+                  id="login-identifier"
+                  aria-invalid={Boolean(errors.identifier)}
+                  aria-describedby={errors.identifier ? 'login-identifier-error' : undefined}
                 />
               </div>
-              {errors.email && (
-                <p id="login-email-error" role="alert" className="auth-error">
+              {errors.identifier && (
+                <p id="login-identifier-error" role="alert" className="auth-error">
                   <CircleAlert className="w-4 h-4 flex-none" aria-hidden />
-                  {errors.email}
+                  {errors.identifier}
                 </p>
               )}
             </div>

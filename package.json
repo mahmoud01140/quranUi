@@ -15,7 +15,6 @@
     "framer-motion": "^11.2.11",
     "zustand": "^4.5.4",
     "axios": "^1.7.2",
-    "socket.io-client": "^4.8.3",
     "recharts": "^2.12.7",
     "lucide-react": "^0.395.0",
     "react-hot-toast": "^2.4.1",

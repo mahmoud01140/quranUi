@@ -16,6 +16,7 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import api from '../../services/api';
 import '../../components/halaqa/halaqa.css';
 import { HQ } from '../../components/halaqa/primitives';
+import { uploadDirectToCloudinary } from '../../utils/cloudinaryUpload';
 
 /* Exam room — calm and focused. Same questions, answers, recording,
    audio and submit logic as before; only the visual layer changed. */
@@ -193,14 +194,20 @@ export default function TakeExamPage() {
   const submitRecitationOnly = async (resultId) => {
     const recitationRecs = oralRecordings.filter(r => r.audioBlob);
     if (recitationRecs.length === 0 || !resultId) return true;
-    const formData = new FormData();
-    formData.append('examResultId', resultId);
-    recitationRecs.forEach((rec, idx) => {
-      formData.append('recordings', rec.audioBlob, `rec-${idx}.webm`);
-      if (rec.questionId) formData.append(`questionId_${idx}`, rec.questionId);
-    });
-    await api.post(`/exams/${examId}/submit-recitation`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+    // Browser → Cloudinary مباشرة، ثم JSON للباكند — لا multipart عبر Vercel
+    const recordings = [];
+    for (const [idx, rec] of recitationRecs.entries()) {
+      const up = await uploadDirectToCloudinary(rec.audioBlob, { kind: 'audio' });
+      recordings.push({
+        questionId: rec.questionId || null,
+        audioUrl: up.url,
+        audioPublicId: up.publicId,
+        audioResourceType: up.resourceType,
+      });
+    }
+    await api.post(`/exams/${examId}/submit-recitation`, {
+      examResultId: resultId,
+      recordings,
     });
     return true;
   };

@@ -6,11 +6,15 @@ import LoadingSpinner from './LoadingSpinner';
 import QURAN_SURAHS from '../../utils/quranData';
 import { HQ } from '../halaqa/primitives';
 
-/* نافذة إعطاء ورد: اختيار السورة ثم الآيات — تُحفظ وتظهر للطالب في "المطلوب مني". */
+/* نافذة إعطاء ورد: حفظ جديد + ماضٍ (مستقلان) — تُحفظ وتظهر للطالب في "المطلوب مني".
+   كل ركن اختياري مستقل: يمكن إسناد الجديد فقط أو الماضي فقط أو كليهما.
+   إلغاء تفعيل ركن يمسحه من ورد اليوم فيرى الطالب المطلوب فقط. */
 
 export default function WirdAssignModal({ open, studentId, studentName, onClose, onSaved }) {
   const [form, setForm] = useState({
+    includeNew: true,
     surahNumber: 1, fromVerse: 1, toVerse: 7,
+    includeNear: true,
     nearSurahNumber: 1, nearFromVerse: 1, nearToVerse: 7,
     note: '',
   });
@@ -19,7 +23,9 @@ export default function WirdAssignModal({ open, studentId, studentName, onClose,
   useEffect(() => {
     if (open) {
       setForm({
+        includeNew: true,
         surahNumber: 1, fromVerse: 1, toVerse: 7,
+        includeNear: true,
         nearSurahNumber: 1, nearFromVerse: 1, nearToVerse: 7,
         note: '',
       });
@@ -30,25 +36,36 @@ export default function WirdAssignModal({ open, studentId, studentName, onClose,
 
   const handleSave = async () => {
     if (!studentId) { toast.error('لا يوجد طالب مرتبط'); return; }
-    const s = QURAN_SURAHS.find(x => x.number === Number(form.surahNumber));
-    const ns = QURAN_SURAHS.find(x => x.number === Number(form.nearSurahNumber));
-    const fv = Number(form.fromVerse), tv = Number(form.toVerse);
-    const nfv = Number(form.nearFromVerse), ntv = Number(form.nearToVerse);
-    if (!s || !(fv >= 1) || !(tv >= fv) || tv > s.verses) {
-      return toast.error(`تحقق من آيات الحفظ الجديد (سورة ${s?.name || ''} بها ${s?.verses || '?'} آية)`);
+    if (!form.includeNew && !form.includeNear) {
+      return toast.error('فعّل الحفظ الجديد أو الماضي على الأقل');
     }
-    if (!ns || !(nfv >= 1) || !(ntv >= nfv) || ntv > ns.verses) {
-      return toast.error(`تحقق من آيات الماضي القريب (سورة ${ns?.name || ''} بها ${ns?.verses || '?'} آية)`);
+    const payload = {};
+    if (form.includeNew) {
+      const s = QURAN_SURAHS.find(x => x.number === Number(form.surahNumber));
+      const fv = Number(form.fromVerse), tv = Number(form.toVerse);
+      if (!s || !(fv >= 1) || !(tv >= fv) || tv > s.verses) {
+        return toast.error(`تحقق من آيات الحفظ الجديد (سورة ${s?.name || ''} بها ${s?.verses || '?'} آية)`);
+      }
+      payload.newHifz = { surahNumber: s.number, surahName: s.name, fromVerse: fv, toVerse: tv };
+    } else {
+      payload.clearNewHifz = true;
+    }
+    if (form.includeNear) {
+      const ns = QURAN_SURAHS.find(x => x.number === Number(form.nearSurahNumber));
+      const nfv = Number(form.nearFromVerse), ntv = Number(form.nearToVerse);
+      if (!ns || !(nfv >= 1) || !(ntv >= nfv) || ntv > ns.verses) {
+        return toast.error(`تحقق من آيات الماضي (سورة ${ns?.name || ''} بها ${ns?.verses || '?'} آية)`);
+      }
+      payload.nearRevision = { surahNumber: ns.number, surahName: ns.name, fromVerse: nfv, toVerse: ntv };
+    } else {
+      payload.clearNearRevision = true;
+    }
+    if (form.note?.trim()) {
+      payload.additionalExercise = { title: 'توجيه المعلم', details: form.note.trim(), status: 'pending' };
     }
     setSaving(true);
     try {
-      await api.put(`/daily-tasks/student/${studentId}/assign`, {
-        newHifz: { surahNumber: s.number, surahName: s.name, fromVerse: fv, toVerse: tv },
-        nearRevision: { surahNumber: ns.number, surahName: ns.name, fromVerse: nfv, toVerse: ntv },
-        additionalExercise: form.note?.trim()
-          ? { title: 'توجيه المعلم', details: form.note.trim(), status: 'pending' }
-          : undefined,
-      });
+      await api.put(`/daily-tasks/student/${studentId}/assign`, payload);
       toast.success('تم إرسال الورد للطالب — سيجده في "المطلوب مني" ✅');
       onClose();
       if (onSaved) onSaved();
@@ -83,38 +100,50 @@ export default function WirdAssignModal({ open, studentId, studentName, onClose,
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 14, padding: 12 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 900, color: HQ.INK }}>الحفظ الجديد</p>
-            <div className="m-form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-              <label style={lblStyle}>السورة
-                <select value={form.surahNumber} onChange={e => setForm(p => ({ ...p, surahNumber: e.target.value }))} style={selStyle}>
-                  {QURAN_SURAHS.map(s => <option key={s.number} value={s.number}>{s.number}. {s.name}</option>)}
-                </select>
-              </label>
-              <label style={lblStyle}>من آية
-                <input type="number" min={1} value={form.fromVerse} onChange={e => setForm(p => ({ ...p, fromVerse: e.target.value }))} style={numStyle} />
-              </label>
-              <label style={lblStyle}>إلى آية
-                <input type="number" min={1} value={form.toVerse} onChange={e => setForm(p => ({ ...p, toVerse: e.target.value }))} style={numStyle} />
-              </label>
-            </div>
+          <div style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 14, padding: 12, opacity: form.includeNew ? 1 : 0.55 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px', fontSize: 14, fontWeight: 900, color: HQ.INK, cursor: 'pointer', minHeight: 44 }}>
+              <input type="checkbox" checked={form.includeNew} onChange={e => setForm(p => ({ ...p, includeNew: e.target.checked }))}
+                style={{ width: 20, height: 20, accentColor: HQ.MENTOR, cursor: 'pointer', flex: 'none' }} />
+              الحفظ الجديد
+            </label>
+            {form.includeNew && (
+              <div className="m-form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+                <label style={lblStyle}>السورة
+                  <select value={form.surahNumber} onChange={e => setForm(p => ({ ...p, surahNumber: e.target.value }))} style={selStyle}>
+                    {QURAN_SURAHS.map(s => <option key={s.number} value={s.number}>{s.number}. {s.name}</option>)}
+                  </select>
+                </label>
+                <label style={lblStyle}>من آية
+                  <input type="number" min={1} value={form.fromVerse} onChange={e => setForm(p => ({ ...p, fromVerse: e.target.value }))} style={numStyle} />
+                </label>
+                <label style={lblStyle}>إلى آية
+                  <input type="number" min={1} value={form.toVerse} onChange={e => setForm(p => ({ ...p, toVerse: e.target.value }))} style={numStyle} />
+                </label>
+              </div>
+            )}
           </div>
 
-          <div style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 14, padding: 12 }}>
-            <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 900, color: HQ.INK }}>الماضي القريب (مراجعة)</p>
-            <div className="m-form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
-              <label style={lblStyle}>السورة
-                <select value={form.nearSurahNumber} onChange={e => setForm(p => ({ ...p, nearSurahNumber: e.target.value }))} style={selStyle}>
-                  {QURAN_SURAHS.map(s => <option key={s.number} value={s.number}>{s.number}. {s.name}</option>)}
-                </select>
-              </label>
-              <label style={lblStyle}>من آية
-                <input type="number" min={1} value={form.nearFromVerse} onChange={e => setForm(p => ({ ...p, nearFromVerse: e.target.value }))} style={numStyle} />
-              </label>
-              <label style={lblStyle}>إلى آية
-                <input type="number" min={1} value={form.nearToVerse} onChange={e => setForm(p => ({ ...p, nearToVerse: e.target.value }))} style={numStyle} />
-              </label>
-            </div>
+          <div style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 14, padding: 12, opacity: form.includeNear ? 1 : 0.55 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 8px', fontSize: 14, fontWeight: 900, color: HQ.INK, cursor: 'pointer', minHeight: 44 }}>
+              <input type="checkbox" checked={form.includeNear} onChange={e => setForm(p => ({ ...p, includeNear: e.target.checked }))}
+                style={{ width: 20, height: 20, accentColor: HQ.MENTOR, cursor: 'pointer', flex: 'none' }} />
+              الماضي (مراجعة)
+            </label>
+            {form.includeNear && (
+              <div className="m-form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8 }}>
+                <label style={lblStyle}>السورة
+                  <select value={form.nearSurahNumber} onChange={e => setForm(p => ({ ...p, nearSurahNumber: e.target.value }))} style={selStyle}>
+                    {QURAN_SURAHS.map(s => <option key={s.number} value={s.number}>{s.number}. {s.name}</option>)}
+                  </select>
+                </label>
+                <label style={lblStyle}>من آية
+                  <input type="number" min={1} value={form.nearFromVerse} onChange={e => setForm(p => ({ ...p, nearFromVerse: e.target.value }))} style={numStyle} />
+                </label>
+                <label style={lblStyle}>إلى آية
+                  <input type="number" min={1} value={form.nearToVerse} onChange={e => setForm(p => ({ ...p, nearToVerse: e.target.value }))} style={numStyle} />
+                </label>
+              </div>
+            )}
           </div>
 
           <div>

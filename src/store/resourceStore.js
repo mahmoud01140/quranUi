@@ -25,10 +25,9 @@ const useResourceStore = create((set) => ({
     }
   },
 
-  uploadResource: async (formData) => {
-    const res = await api.post('/resources', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  // Direct-uploaded file metadata (URL verified server-side by cloud_name).
+  uploadResourceFromUrl: async (payload) => {
+    const res = await api.post('/resources', payload);
     set((state) => ({ resources: [res.data.resource, ...state.resources] }));
     return res.data.resource;
   },

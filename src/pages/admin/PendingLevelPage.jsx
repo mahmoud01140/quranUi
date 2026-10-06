@@ -6,6 +6,9 @@ import PageLayout from '../../components/shared/PageLayout';
 import api from '../../services/api';
 import { downloadStudentReport } from '../../utils/studentReport';
 import { getLevelLabel, formatDateAr, formatTime12Ar } from '../../utils/helpers';
+import { resolveSurveyAnswer } from '../../utils/surveyDisplay';
+import { notifySubscriptionWarning, fetchSubscriptionWarning, isBlockingWarning } from '../../utils/subscriptionWarning';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import SessionTimePicker from '../../components/shared/SessionTimePicker';
 import '../../components/halaqa/halaqa.css';
@@ -41,6 +44,8 @@ export default function PendingLevelPage() {
   // Live modal (title + optional sources)
   const [liveUser, setLiveUser] = useState(null);
   const [liveForm, setLiveForm] = useState({ title: '', resources: '', description: '' });
+  // Pre-start subscription confirm: { u, payload, warning } — null when idle
+  const [subConfirm, setSubConfirm] = useState(null);
   const [reportId, setReportId] = useState(null);
 
   useEffect(() => { fetchData(); }, []);
@@ -156,18 +161,31 @@ export default function PendingLevelPage() {
       toast.error('تعذر تجهيز التقرير');
     } finally { setReportId(null); }
   };
+  // Pre-start subscription check: expired/unsubscribed students require
+  // explicit confirmation ("هل تريد الاستمرار؟") before the broadcast starts.
   const handleConfirmLive = async () => {
-    if (!liveUser) return;
+    if (!liveUser || actingId) return;
     const u = liveUser;
+    const payload = {};
+    if (liveForm.title?.trim()) payload.title = liveForm.title.trim();
+    if (liveForm.resources?.trim()) payload.resources = liveForm.resources.trim();
+    if (liveForm.description?.trim()) payload.description = liveForm.description.trim();
+    const warning = await fetchSubscriptionWarning(u._id);
+    if (isBlockingWarning(warning)) {
+      setSubConfirm({ u, payload, warning });
+      return;
+    }
+    if (warning) notifySubscriptionWarning(warning); // expiring_soon: info only
+    await doStartLive(u, payload);
+  };
+
+  const doStartLive = async (u, payload) => {
     setActingId(u._id);
     try {
-      const payload = {};
-      if (liveForm.title?.trim()) payload.title = liveForm.title.trim();
-      if (liveForm.resources?.trim()) payload.resources = liveForm.resources.trim();
-      if (liveForm.description?.trim()) payload.description = liveForm.description.trim();
       const res = await api.post(`/live/student/${u._id}/start`, payload);
       toast.success('تم إنشاء الدرس وبدء البث المباشر مع الطالب');
       setLiveUser(null);
+      setSubConfirm(null);
       navigate('/admin/live', {
         state: {
           sessionId: res.data.session._id,
@@ -361,12 +379,15 @@ export default function PendingLevelPage() {
                     <p style={{ margin: '0 0 16px', fontSize: 13, color: HQ.MUTED }}>لا توجد إجابات مسجلة.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                      {reviewData.surveyAnswers.map((sa, idx) => (
+                      {reviewData.surveyAnswers.map((sa, idx) => {
+                      const resolved = resolveSurveyAnswer(sa, idx, reviewUser?.registrationType);
+                      return (
                         <div key={idx} style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: '10px 14px' }}>
-                          <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: HQ.MUTED }}>س{idx + 1}: {sa.questionText || 'سؤال الاستبيان'}</p>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: HQ.INK }}>{sa.answerText || sa.answer || '—'}</p>
+                          <p style={{ margin: '0 0 2px', fontSize: 12, fontWeight: 700, color: HQ.MUTED }}>س{idx + 1}: {resolved.questionText}</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: HQ.INK }}>{resolved.answerText}</p>
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   )}
                   <h4 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 900, color: HQ.INK }}>التسجيلات الشفهية ({reviewData.audioList.length})</h4>
@@ -424,6 +445,23 @@ export default function PendingLevelPage() {
             </div>
           </div>
         )}
+
+        {/* Pre-start subscription confirm: expired/unsubscribed student */}
+        <ConfirmModal
+          open={Boolean(subConfirm)}
+          title="هل تريد الاستمرار في البث؟"
+          message={subConfirm?.warning?.message || ''}
+          confirmLabel="نعم، ابدأ البث"
+          cancelLabel="تراجع"
+          danger
+          busy={actingId === subConfirm?.u?._id}
+          onConfirm={() => {
+            const s = subConfirm;
+            setSubConfirm(null);
+            if (s) doStartLive(s.u, s.payload);
+          }}
+          onClose={() => setSubConfirm(null)}
+        />
       </div>
     </PageLayout>
   );

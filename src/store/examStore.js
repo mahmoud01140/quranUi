@@ -1,5 +1,27 @@
 import { create } from 'zustand';
 import api from '../services/api';
+import useAuthStore from './authStore';
+import { uploadDirectToCloudinary } from '../utils/cloudinaryUpload';
+
+/**
+ * Upload each recording blob straight to Cloudinary and return the JSON
+ * payload the backend expects. Throws on upload failure — no server fallback.
+ */
+async function uploadRecordingsToCloudinary(oralRecordings, idKey) {
+  const withBlobs = (oralRecordings || []).filter((r) => r?.audioBlob);
+  if (!withBlobs.length) return [];
+  const recordings = [];
+  for (const rec of withBlobs) {
+    const up = await uploadDirectToCloudinary(rec.audioBlob, { kind: 'audio' });
+    recordings.push({
+      [idKey]: rec[idKey] || rec.taskId || rec.questionId || null,
+      audioUrl: up.url,
+      audioPublicId: up.publicId,
+      audioResourceType: up.resourceType,
+    });
+  }
+  return recordings;
+}
 
 const useExamStore = create((set, get) => ({
   currentExam: null,
@@ -94,10 +116,22 @@ const useExamStore = create((set, get) => ({
     try {
       const answersArray = (currentExam?.questions || []).map((_, idx) => answers[idx] ?? -1);
       const writtenAnswersArray = (currentExam?.questions || []).map((_, idx) => writtenAnswers[idx] ?? '');
+      // فضّل النسخة المُثراة بالنصوص (يكتبها SurveyPage) — وإلا الفهارس كالسابق
+      let surveyPayload = surveyAnswers;
+      try {
+        const { user } = useAuthStore.getState();
+        const regType = user?.registrationType || 'student';
+        const enriched = JSON.parse(
+          localStorage.getItem(`survey_enriched_${user?._id || 'guest'}_${regType}`) || 'null'
+        );
+        if (Array.isArray(enriched) && enriched.some(Boolean)) {
+          surveyPayload = enriched;
+        }
+      } catch (_) {}
       const res = await api.post(`/exams/${examId}/submit`, {
         answers: answersArray,
         writtenAnswers: writtenAnswersArray,
-        surveyAnswers,
+        surveyAnswers: surveyPayload,
         examType: currentExam?.type,
       });
       set({ result: res.data.result, isSubmitting: false });
@@ -108,23 +142,15 @@ const useExamStore = create((set, get) => ({
     }
   },
 
-  // Submit oral exam (old placement flow)
+  // Submit oral exam — Browser → Cloudinary مباشرة، لا multipart عبر السيرفر
   submitOralExam: async (examId, resultId) => {
     const { oralRecordings } = get();
     set({ isSubmitting: true });
     try {
-      const formData = new FormData();
-      if (resultId) formData.append('resultId', resultId);
-      oralRecordings.forEach((rec, idx) => {
-        if (rec.audioBlob) {
-          const filename = rec.audioBlob.name || `recording-${idx}.webm`;
-          formData.append('recordings', rec.audioBlob, filename);
-        }
-        if (rec.taskId) formData.append(`taskId_${idx}`, rec.taskId);
-      });
-      const res = await api.post(`/exams/${examId}/submit-oral`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const recordings = await uploadRecordingsToCloudinary(oralRecordings, 'taskId');
+      const payload = { recordings };
+      if (resultId) payload.resultId = resultId;
+      const res = await api.post(`/exams/${examId}/submit-oral`, payload);
       set({
         isSubmitting: false,
         result: res.data.result,
@@ -138,20 +164,15 @@ const useExamStore = create((set, get) => ({
     }
   },
 
-  // Submit recitation recordings for lesson exam
+  // Submit recitation recordings — Browser → Cloudinary مباشرة
   submitRecitationAnswers: async (examId, resultId) => {
     const { oralRecordings } = get();
     set({ isSubmitting: true });
     try {
-      const formData = new FormData();
-      if (resultId) formData.append('examResultId', resultId);
-      oralRecordings.forEach((rec, idx) => {
-        if (rec.audioBlob) formData.append('recordings', rec.audioBlob, `recitation-${idx}.webm`);
-        if (rec.questionId) formData.append(`questionId_${idx}`, rec.questionId);
-      });
-      const res = await api.post(`/exams/${examId}/submit-recitation`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const recordings = await uploadRecordingsToCloudinary(oralRecordings, 'questionId');
+      const payload = { recordings };
+      if (resultId) payload.examResultId = resultId;
+      const res = await api.post(`/exams/${examId}/submit-recitation`, payload);
       set({ isSubmitting: false });
       return res.data.result;
     } catch (error) {
@@ -257,6 +278,18 @@ const useExamStore = create((set, get) => ({
   // Admin/Teacher: create exam
   createGroupExam: async (examData) => {
     const res = await api.post('/exams', examData);
+    return res.data.exam;
+  },
+
+  // Admin: create standalone bank exam (hidden until assigned)
+  createBankExam: async (examData) => {
+    const res = await api.post('/exams', { ...examData, targetType: 'bank' });
+    return res.data.exam;
+  },
+
+  // Admin: place a bank exam on a student's individual-plan lesson (or direct assign without lesson)
+  assignExamToLesson: async (examId, { studentId, lessonId }) => {
+    const res = await api.post(`/exams/${examId}/assign-lesson`, { studentId, lessonId: lessonId || undefined });
     return res.data.exam;
   },
 

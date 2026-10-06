@@ -61,6 +61,18 @@ export default function SurveyPage() {
       const saved = JSON.parse(localStorage.getItem(storageKey) || '[]');
       saved[currentQ] = index;
       localStorage.setItem(storageKey, JSON.stringify(saved));
+      // نسخة مُثراة بالنصوص تُرسل مع التسليم فيُحفظ السؤال والإجابة نصاً
+      // (إصلاح عرض المراجعة — بدل الفهارس الجافة)
+      const enrichedKey = `survey_enriched_${user?._id || 'guest'}_${regType}`;
+      const enriched = JSON.parse(localStorage.getItem(enrichedKey) || '[]');
+      const q = questions[currentQ];
+      enriched[currentQ] = {
+        questionIndex: currentQ,
+        selectedOption: index,
+        questionText: q?.text || '',
+        answerText: q?.options?.[index] || '',
+      };
+      localStorage.setItem(enrichedKey, JSON.stringify(enriched));
     } catch (_) {}
   };
 

@@ -290,9 +290,9 @@ export default function LessonPage() {
           <ArrowRight size={16} /> المنهج
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link to={`/student/lessons/${lessonId}/discussion`}
+          <Link to="/student/discussion"
             style={{ fontSize: 13, color: HQ.MENTOR, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none', background: '#E2EFE7', borderRadius: 9999, padding: '8px 14px', minHeight: 44 }}>
-            <MessageCircle size={15} /> نقاش هذا الدرس
+            <MessageCircle size={15} /> استفسار للإدارة
           </Link>
           <span style={{ fontSize: 13, fontWeight: 700, color: HQ.MUTED }}>الدرس {currentLesson.lessonNumber}</span>
         </div>

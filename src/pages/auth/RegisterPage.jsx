@@ -25,7 +25,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({});
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: '',
-    phone: '', country: '', dateOfBirth: '', gender: '', role: 'student',
+    phone: '', dateOfBirth: '', gender: '', role: 'student',
   });
 
   const handleChange = (e) => {
@@ -40,8 +40,8 @@ export default function RegisterPage() {
     if (hasErrors(errs)) { setErrors(errs); return; }
 
     try {
-      const { firstName, lastName, email, password, phone, country, dateOfBirth, gender, role } = form;
-      await register({ firstName, lastName, email, password, phone, country, dateOfBirth, gender, role });
+      const { firstName, lastName, email, password, phone, dateOfBirth, gender, role } = form;
+      await register({ firstName, lastName, email, password, phone, dateOfBirth, gender, role });
       toast.success('تم إنشاء الحساب بنجاح!');
       if (role === 'parent') {
         navigate('/parent');
@@ -128,9 +128,9 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Email */}
+            {/* Email (optional — for account recovery only) */}
             <div>
-              <label htmlFor="reg-email" className="auth-label">البريد الإلكتروني *</label>
+              <label htmlFor="reg-email" className="auth-label">البريد الإلكتروني <span style={{ color: '#756E85', fontWeight: 500 }}>(اختياري — لاستعادة الحساب)</span></label>
               <div className="relative">
                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#756E85]" aria-hidden />
                 <input
@@ -186,29 +186,18 @@ export default function RegisterPage() {
               <FieldError id="reg-confirm-error" message={errors.confirmPassword} />
             </div>
 
-            {/* Phone & Country */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="reg-phone" className="auth-label">الهاتف</label>
-                <input
-                  id="reg-phone" name="phone" value={form.phone} onChange={handleChange}
-                  className="auth-input"
-                  style={{ direction: 'ltr', textAlign: 'left' }}
-                  placeholder="+966..."
-                  aria-invalid={Boolean(errors.phone)}
-                  aria-describedby={errors.phone ? 'reg-phone-error' : undefined}
-                />
-                <FieldError id="reg-phone-error" message={errors.phone} />
-              </div>
-              <div>
-                <label htmlFor="reg-country" className="auth-label">البلد</label>
-                <select id="reg-country" name="country" value={form.country} onChange={handleChange} className="auth-input">
-                  <option value="">اختر البلد</option>
-                  {['السعودية', 'مصر', 'الإمارات', 'الكويت', 'الأردن', 'سوريا', 'المغرب', 'الجزائر', 'تونس', 'العراق', 'فلسطين', 'ليبيا', 'اليمن', 'عمان', 'البحرين', 'قطر', 'أخرى'].map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Phone */}
+            <div>
+              <label htmlFor="reg-phone" className="auth-label">رقم الهاتف * <span style={{ color: '#756E85', fontWeight: 500 }}>(للدخول — مصري)</span></label>
+              <input
+                id="reg-phone" name="phone" value={form.phone} onChange={handleChange}
+                className="auth-input"
+                style={{ direction: 'ltr', textAlign: 'left' }}
+                placeholder="01xxxxxxxxx" inputMode="tel"
+                aria-invalid={Boolean(errors.phone)}
+                aria-describedby={errors.phone ? 'reg-phone-error' : undefined}
+              />
+              <FieldError id="reg-phone-error" message={errors.phone} />
             </div>
 
             {/* DOB & Gender */}

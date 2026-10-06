@@ -5,9 +5,11 @@ import PageLayout from '../../components/shared/PageLayout';
 import useAuthStore from '../../store/authStore';
 import useNotifications from '../../hooks/useNotifications';
 import { getLevelLabel, formatTime12Ar } from '../../utils/helpers';
+import { notifySubscriptionWarning, fetchSubscriptionWarning, isBlockingWarning } from '../../utils/subscriptionWarning';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import '../../components/halaqa/halaqa.css';
 import { HQ, HqAvatar, HqBadge } from '../../components/halaqa/primitives';
 
@@ -21,6 +23,8 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [startingId, setStartingId] = useState(null);
+  // Pre-start subscription confirm: { u, warning } — null when idle
+  const [subConfirm, setSubConfirm] = useState(null);
   useNotifications();
 
   const loadAll = () => {
@@ -52,11 +56,25 @@ export default function TeacherDashboard() {
     }
   };
 
+  // Pre-start subscription check: expired/unsubscribed students require
+  // explicit confirmation ("هل تريد الاستمرار؟") before the broadcast starts.
   const handleQuickStart = async (u) => {
+    if (startingId) return;
+    const warning = await fetchSubscriptionWarning(u._id);
+    if (isBlockingWarning(warning)) {
+      setSubConfirm({ u, warning });
+      return;
+    }
+    if (warning) notifySubscriptionWarning(warning); // expiring_soon: info only
+    await doStartLive(u);
+  };
+
+  const doStartLive = async (u) => {
     setStartingId(u._id);
     try {
       const res = await api.post(`/live/student/${u._id}/start`, {});
       toast.success(`انطلق البث مع ${u.firstName}`);
+      setSubConfirm(null);
       navigate('/admin/live', {
         state: {
           sessionId: res.data.session._id,
@@ -179,6 +197,23 @@ export default function TeacherDashboard() {
             </section>
           </>
         )}
+
+        {/* Pre-start subscription confirm: expired/unsubscribed student */}
+        <ConfirmModal
+          open={Boolean(subConfirm)}
+          title="هل تريد الاستمرار في البث؟"
+          message={subConfirm?.warning?.message || ''}
+          confirmLabel="نعم، ابدأ البث"
+          cancelLabel="تراجع"
+          danger
+          busy={startingId === subConfirm?.u?._id}
+          onConfirm={() => {
+            const s = subConfirm;
+            setSubConfirm(null);
+            if (s) doStartLive(s.u);
+          }}
+          onClose={() => setSubConfirm(null)}
+        />
       </div>
     </PageLayout>
   );

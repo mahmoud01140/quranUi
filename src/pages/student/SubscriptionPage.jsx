@@ -9,6 +9,7 @@ import PageLayout from '../../components/shared/PageLayout';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import api from '../../services/api';
 import { formatDateAr, formatTime12Ar } from '../../utils/helpers';
+import { uploadDirectToCloudinary } from '../../utils/cloudinaryUpload';
 import useAuthStore from '../../store/authStore';
 import Pagination from '../../components/shared/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -25,7 +26,6 @@ const FALLBACK_FEATURES = [
   'مراجعة وتصحيح التلاوات والتسميع الصوتي المباشر',
   'الوصول للتسجيلات ومكتبة الشروحات كاملة',
   'بنك الاختبارات والتقييمات المستمرة',
-  'شهادة إتمام معتمدة وموثقة عند إنهاء المنهج الدراسي',
 ];
 
 const CYCLES = [
@@ -38,7 +38,8 @@ export default function SubscriptionPage() {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [currency, setCurrency] = useState('EGP');
+  // الدفع بالجنيه المصري فقط — لا عملات أخرى
+  const currency = 'EGP';
   const [billingCycle, setBillingCycle] = useState('monthly');
 
   // Backend config & status (endpoints unchanged)
@@ -139,9 +140,9 @@ export default function SubscriptionPage() {
   // Prices and payment destinations come ONLY from the admin panel
   // (/payments/public-config). No invented fallbacks — a missing value
   // renders as unavailable, never as a made-up number.
-  const calculateAmount = (plan, cycle, curr) => {
+  const calculateAmount = (plan, cycle) => {
     if (!plan) return null;
-    const baseMonthly = curr === 'EGP' ? plan.priceEGP : plan.priceSAR;
+    const baseMonthly = plan.priceEGP;
     if (baseMonthly == null) return null;
     if (cycle === 'monthly') return baseMonthly;
     if (cycle === 'quarterly') {
@@ -170,7 +171,7 @@ export default function SubscriptionPage() {
   const effectiveMethod = availableMethods.includes(selectedMethod)
     ? selectedMethod
     : (availableMethods[0] || selectedMethod);
-  const displayAmount = calculateAmount(planConfig, billingCycle, currency);
+  const displayAmount = calculateAmount(planConfig, billingCycle);
   const canCheckout = displayAmount != null && !noMethodsConfigured;
 
   const handleSubmitPayment = async (e) => {
@@ -191,29 +192,34 @@ export default function SubscriptionPage() {
       toast.error('يرجى إدخال اسم المحوِّل');
       return;
     }
-    const formData = new FormData();
-    formData.append('billingCycle', billingCycle);
     // NOTE: the amount is intentionally NOT sent — the server recalculates
     // the price from the admin panel settings to prevent tampering.
-    formData.append('currency', currency);
-    formData.append('method', effectiveMethod);
-    formData.append('senderPhone', senderPhone);
-    formData.append('senderName', senderName);
-    formData.append('referenceNumber', referenceNumber);
-    formData.append('notes', notes);
-    formData.append('receipt', receiptFile);
+    const basePayload = {
+      billingCycle,
+      currency,
+      method: effectiveMethod,
+      senderPhone,
+      senderName,
+      referenceNumber,
+      notes,
+    };
 
     setIsSubmitting(true);
     try {
-      const res = await api.post('/payments/submit', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      // Browser → Cloudinary مباشرة — الإيصال لا يمر بالسيرفر أبداً
+      const direct = await uploadDirectToCloudinary(receiptFile, { kind: 'receipt' });
+      const res = await api.post('/payments/submit', {
+        ...basePayload,
+        receiptUrl: direct.url,
+        receiptPublicId: direct.publicId,
+        receiptResourceType: direct.resourceType,
       });
       toast.success(res.data.message || 'تم إرسال إيصال التحويل بنجاح!');
       setCheckoutModalOpen(false);
       await fetchData();
     } catch (err) {
       console.error('Submit payment error:', err);
-      toast.error(err.response?.data?.message || 'حدث خطأ أثناء إرسال طلب الدفع');
+      toast.error(err.response?.data?.message || err.message || 'حدث خطأ أثناء إرسال طلب الدفع');
     } finally {
       setIsSubmitting(false);
     }
@@ -226,7 +232,7 @@ export default function SubscriptionPage() {
   const pendingPayment = payments.find(p => p.status === 'pending');
   const hasPending = Boolean(pendingPayment);
   const trialUsed = (subscription?.trialSessionsAttended || 0) >= (subscription?.trialSessionsAllowed || 1);
-  const currencyLabel = currency === 'EGP' ? 'ج.م' : 'ر.س';
+  const currencyLabel = 'ج.م';
 
   // المنتهي مدفوعاً يُعرض أولاً قبل فرع التجربة
   const statusTitle = !subscription
@@ -342,16 +348,8 @@ export default function SubscriptionPage() {
                 ))}
               </ul>
 
-              {/* Currency + cycle — segmented, quiet */}
+              {/* Billing cycle — segmented, quiet (الدفع بالجنيه المصري فقط) */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                <div role="group" aria-label="العملة" style={{ display: 'inline-flex', gap: 4, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 4 }}>
-                  {[{ k: 'EGP', l: 'جنيه مصري' }, { k: 'SAR', l: 'ريال سعودي' }].map(c => (
-                    <button key={c.k} type="button" aria-pressed={currency === c.k} onClick={() => setCurrency(c.k)}
-                      style={{ border: 'none', cursor: 'pointer', minHeight: 44, padding: '0 16px', borderRadius: 8, fontSize: 13, fontWeight: 800, background: currency === c.k ? HQ.MENTOR : 'transparent', color: currency === c.k ? '#fff' : HQ.MUTED }}>
-                      {c.l}
-                    </button>
-                  ))}
-                </div>
                 <div role="group" aria-label="مدة الاشتراك" style={{ display: 'inline-flex', gap: 4, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 12, padding: 4 }}>
                   {CYCLES.map(c => (
                     <button key={c.key} type="button" aria-pressed={billingCycle === c.key} onClick={() => setBillingCycle(c.key)}
@@ -372,7 +370,7 @@ export default function SubscriptionPage() {
               </div>
               {displayAmount == null ? (
                 <p role="alert" style={{ margin: '0 0 16px', fontSize: 13, color: '#C2410C' }}>
-                  سعر هذه العملة غير مضبوط من الإدارة حالياً — جرّب العملة الأخرى أو حاول لاحقاً.
+                  السعر غير مضبوط من الإدارة حالياً — حاول لاحقاً.
                 </p>
               ) : (
                 <p style={{ margin: '0 0 16px', fontSize: 13, color: HQ.MUTED }}>
@@ -406,7 +404,7 @@ export default function SubscriptionPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ flex: 1, minWidth: 0 }}>
                             <strong style={{ display: 'block', fontSize: 15, color: HQ.INK }}>
-                              {p.amount} {p.currency === 'EGP' ? 'ج.م' : 'ر.س'} · {p.method === 'vodafone_cash' ? 'فودافون كاش' : 'انستاباي'}
+                              {p.amount} ج.م · {p.method === 'vodafone_cash' ? 'فودافون كاش' : 'انستاباي'}
                             </strong>
                             <span style={{ display: 'block', fontSize: 13, color: HQ.MUTED, marginTop: 2 }}>
                               {formatDateAr(p.createdAt)}
@@ -485,7 +483,7 @@ export default function SubscriptionPage() {
               <div style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, borderRadius: 14, padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
                 <span style={{ fontSize: 14, color: HQ.MUTED }}>المبلغ المطلوب تحويله</span>
                 <strong style={{ fontSize: 24, color: HQ.INK }}>
-                  {displayAmount == null ? 'غير متاح' : `${displayAmount} ${currency === 'EGP' ? 'ج.م' : 'ر.س'}`}
+                  {displayAmount == null ? 'غير متاح' : `${displayAmount} ج.م`}
                 </strong>
               </div>
 

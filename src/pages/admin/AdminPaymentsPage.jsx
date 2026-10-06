@@ -69,7 +69,6 @@ export default function AdminPaymentsPage() {
       name: 'الاشتراك الشهري في حلقات القرآن الكريم',
       description: 'اشتراك شهري شامل لحضور كافة الحلقات المباشرة ومتابعة خطة الحفظ',
       priceEGP: '',
-      priceSAR: '',
       quarterlyDiscountPercent: 10,
       annualDiscountPercent: 20,
     },
@@ -192,9 +191,8 @@ export default function AdminPaymentsPage() {
     // Never save placeholder-looking payment data: prices and at least one
     // enabled payment destination are required.
     const priceEGP = Number(settings.plan?.priceEGP);
-    const priceSAR = Number(settings.plan?.priceSAR);
-    if (!priceEGP && !priceSAR) {
-      toast.error('حدد سعر الاشتراك (بالجنيه أو بالريال على الأقل) قبل الحفظ');
+    if (!priceEGP) {
+      toast.error('حدد سعر الاشتراك بالجنيه المصري قبل الحفظ');
       return;
     }
     const vodaOk = (settings.vodafoneCashNumbers || []).filter(Boolean).length > 0;
@@ -520,7 +518,7 @@ export default function AdminPaymentsPage() {
                               </td>
 
                               <td data-label="المبلغ" className="font-black" style={{ color: HQ.INK, fontVariantNumeric: 'tabular-nums' }}>
-                                {payment.amount} {payment.currency === 'EGP' ? 'ج.م' : 'ر.س'}
+                                {payment.amount} ج.م
                               </td>
 
                               <td data-label="طريقة التحويل">
@@ -563,7 +561,7 @@ export default function AdminPaymentsPage() {
                                     معاينة الإيصال
                                   </button>
                                 ) : (
-                                  <span className="text-xs" style={{ color: HQ.MUTED }}>لا يوجد صورة</span>
+                                  <span className="text-xs" style={{ color: HQ.MUTED }} title="حُذفت صورة الإيصال تلقائياً لتوفير المساحة بعد مرور مدة المراجعة">حُذفت تلقائياً 🧹</span>
                                 )}
                               </td>
 
@@ -851,9 +849,9 @@ export default function AdminPaymentsPage() {
                     </div>
                   </div>
 
-                  <div className="grid sm:grid-cols-4 gap-4 p-4" style={{ background: HQ.PAPER, borderRadius: 12, border: `1px solid ${HQ.LINE}` }}>
+                  <div className="grid sm:grid-cols-3 gap-4 p-4" style={{ background: HQ.PAPER, borderRadius: 12, border: `1px solid ${HQ.LINE}` }}>
                     <div>
-                      <label htmlFor="pay-egp" style={lblSm}>السعر الشهري (EGP)</label>
+                      <label htmlFor="pay-egp" style={lblSm}>السعر الشهري (جنيه مصري)</label>
                       <input
                         id="pay-egp"
                         type="number"
@@ -861,20 +859,6 @@ export default function AdminPaymentsPage() {
                         onChange={(e) => setSettings({
                           ...settings,
                           plan: { ...settings.plan, priceEGP: Number(e.target.value) }
-                        })}
-                        className="font-bold focus:border-[#177B58] focus:outline-none"
-                        style={{ ...field, fontVariantNumeric: 'tabular-nums' }}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="pay-sar" style={lblSm}>السعر الشهري (SAR)</label>
-                      <input
-                        id="pay-sar"
-                        type="number"
-                        value={settings.plan?.priceSAR ?? 49}
-                        onChange={(e) => setSettings({
-                          ...settings,
-                          plan: { ...settings.plan, priceSAR: Number(e.target.value) }
                         })}
                         className="font-bold focus:border-[#177B58] focus:outline-none"
                         style={{ ...field, fontVariantNumeric: 'tabular-nums' }}

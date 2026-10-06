@@ -4,7 +4,7 @@ import {
   BarChart2, Settings, BookMarked, ClipboardList,
   UserCheck, Book, TrendingUp, ChevronLeft, Sparkles,
   CalendarCheck, FolderOpen, Flame, CreditCard,
-  Volume2,
+  Volume2, MessageSquare,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
@@ -16,6 +16,7 @@ const studentLinks = [
   { to: '/student', icon: LayoutDashboard, label: 'المطلوب مني اليوم', end: true },
   { to: '/student/curriculum', icon: BookOpen, label: 'الحصص السابقة' },
   { to: '/student/quran', icon: BookMarked, label: 'المصحف الإلكتروني والمعلم' },
+  { to: '/student/discussion', icon: MessageSquare, label: 'المناقشة مع الإدارة' },
   { to: '/student/resources', icon: FolderOpen, label: 'المكتبة التعليمية' },
   { to: '/student/subscription', icon: CreditCard, label: 'الاشتراك' },
 ];
@@ -31,11 +32,11 @@ const teacherLinks = [
    a quiet header above the first link of each functional group. */
 const adminLinks = [
   { to: '/admin', icon: LayoutDashboard, label: 'لوحة اليوم', end: true },
-  { to: '/admin/overview', icon: BarChart2, label: 'نظرة عامة' },
   { section: 'المحتوى والاختبارات' },
   { to: '/admin/exams', icon: FileText, label: 'بنك وإدارة الامتحانات' },
   { section: 'الإدارة' },
   { to: '/admin/users', icon: Users, label: 'إدارة الطلاب والمستخدمين' },
+  { to: '/admin/discussions', icon: MessageSquare, label: 'رسائل واستفسارات الطلاب' },
   { to: '/admin/pending', icon: UserCheck, label: 'بانتظار تحديد المستوى' },
   { to: '/admin/schedule', icon: CalendarCheck, label: 'مواعيد الحصص' },
   { to: '/admin/payments', icon: CreditCard, label: 'الاشتراكات والمدفوعات' },

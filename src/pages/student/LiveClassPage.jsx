@@ -10,8 +10,7 @@ import JitsiMeeting from '../../components/shared/JitsiMeeting';
 import MushafSharePanel from '../../components/shared/MushafSharePanel';
 import useAuthStore from '../../store/authStore';
 import useLiveStore from '../../store/liveStore';
-import useSocket from '../../hooks/useSocket';
-import { getSocket } from '../../services/socket';
+import usePolling from '../../hooks/usePolling';
 import api from '../../services/api';
 import { formatCountdown } from '../../utils/helpers';
 import '../../components/halaqa/halaqa.css';
@@ -19,6 +18,9 @@ import { HQ, HqBadge } from '../../components/halaqa/primitives';
 import { WirdCard, PresenceBar } from '../../components/halaqa/LiveBits';
 
 const POLL_INTERVAL_MS = 10_000;
+
+// بصمة الورد لكشف ورد جديد/محدّث (المعرّف + زمن آخر تعديل من قاعدة البيانات)
+const wirdKey = (t) => (t?._id ? `${t._id}:${t.updatedAt || ''}` : '');
 
 export default function LiveClassPage() {
   const { user } = useAuthStore();
@@ -39,6 +41,7 @@ export default function LiveClassPage() {
   const [myDailyTask, setMyDailyTask] = useState(null);
   const [showWirdCard, setShowWirdCard] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const lastWirdKeyRef = useRef('');
 
   /* المصحف المشترك من المعلم (استطلاع خفيف بلا قنوات لحظية) */
   const [sharedMushaf, setSharedMushaf] = useState(null);
@@ -46,43 +49,57 @@ export default function LiveClassPage() {
   const mushafPollingRef = useRef(null);
   const lastMushafKeyRef = useRef('null');
 
-  useSocket({
-    'live-started': async ({ sessionId }) => {
-      try {
-        const res = await api.get(`/live/${sessionId}`);
-        if (res.data?.session) {
-          if (res.data?.subscription) setSubscriptionStatus(res.data.subscription);
-          const ok = await handleJoin(sessionId);
-          if (ok) {
-            setSession(res.data.session);
-            setIsLive(true);
-            toast.success('بدأ المعلم الحصة المباشرة معك الآن');
-          }
+  // Vercel-safe polling replaces socket.io live-started / broadcast-ended / attendance-ping.
+  // - No session: GET /active/me every 10s (handled below via pollingRef).
+  // - Live session: GET /live/:id every 5s to detect end + roll-call ping (activePing).
+  const seenPingRef = useRef(null);
+  const pollLiveSession = useCallback(async () => {
+    if (!session?._id) return;
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    try {
+      const res = await api.get(`/live/${session._id}`);
+      const fresh = res.data?.session;
+      if (!fresh) return;
+      if (res.data?.subscription) setSubscriptionStatus(res.data.subscription);
+      // Broadcast ended on server -> exit live view
+      if (fresh.status === 'ended' || fresh.status === 'cancelled') {
+        toast('انتهت الجلسة المباشرة');
+        resetLive();
+        setPingActive(null);
+        seenPingRef.current = null;
+        return;
+      }
+      // Roll-call ping via activePing field
+      const ping = fresh.activePing;
+      if (ping?.pingId && ping?.expiresAt && new Date(ping.expiresAt) > new Date()) {
+        if (seenPingRef.current !== ping.pingId) {
+          seenPingRef.current = ping.pingId;
+          setDrawerOpen(false);
+          const remaining = Math.max(1, Math.round((new Date(ping.expiresAt) - new Date()) / 1000));
+          setPingActive({
+            sessionId: fresh._id,
+            pingId: ping.pingId,
+            message: ping.message || 'نداء التحقق من التواجد في الحصة!',
+            remaining,
+          });
+          try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            osc.connect(audioCtx.destination);
+            osc.frequency.value = 587.33;
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+          } catch (_) {}
         }
-      } catch (_) {}
-    },
-    'broadcast-ended': () => {
-      toast('انتهت الجلسة المباشرة');
-      resetLive();
-    },
-    'attendance-ping': ({ sessionId, pingId, message, timeoutSeconds = 60 }) => {
-      setDrawerOpen(false);
-      setPingActive({
-        sessionId,
-        pingId,
-        message: message || 'نداء التحقق من التواجد في الحصة!',
-        remaining: timeoutSeconds,
-      });
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        osc.connect(audioCtx.destination);
-        osc.frequency.value = 587.33;
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-      } catch (_) {}
-    },
-  });
+      } else if (!ping && seenPingRef.current) {
+        // Ping expired/cleared without pong — dismiss silently
+        seenPingRef.current = null;
+      }
+    } catch (_) {}
+  }, [session?._id, resetLive]);
+
+  const isSessionLiveNow = isLive || session?.status === 'live';
+  usePolling(pollLiveSession, isSessionLiveNow ? 5000 : null, [session?._id, isSessionLiveNow]);
 
   useEffect(() => {
     if (!pingActive) return;
@@ -195,11 +212,38 @@ export default function LiveClassPage() {
     (async () => {
       try {
         const res = await api.get('/daily-tasks/today');
-        if (!cancelled) setMyDailyTask(res.data?.task || res.data?.dailyTask || null);
+        if (!cancelled) {
+          const t = res.data?.task || res.data?.dailyTask || null;
+          setMyDailyTask(t);
+          if (t) lastWirdKeyRef.current = wirdKey(t);
+        }
       } catch (_) {}
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // تحديث الورد لحظياً أثناء البث: المعلم قد يُسند ورداً جديداً mid-session،
+  // والطالب لا يعرف إلا بإعادة الجلب — استطلاع خفيف كل 5 ثوانٍ أثناء البث فقط.
+  const pollWirdDuringLive = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    try {
+      const res = await api.get('/daily-tasks/today');
+      const t = res.data?.task || res.data?.dailyTask || null;
+      const key = wirdKey(t);
+      if (key && key !== lastWirdKeyRef.current) {
+        lastWirdKeyRef.current = key;
+        setMyDailyTask(t);
+        setShowWirdCard(true);
+        toast.success('وصلك ورد جديد من المعلم 📖');
+      } else if (key) {
+        // نفس الورد لكن ربما تغيّرت حالته من جهاز آخر — حدّث بصمت
+        setMyDailyTask(t);
+      }
+    } catch (_) {}
+  }, []);
+
+  const isWirdPollingLive = isLive || session?.status === 'live';
+  usePolling(pollWirdDuringLive, isWirdPollingLive ? 5000 : null, [session?._id, isWirdPollingLive]);
 
   // استطلاع حالة المصحف المشترك: كل 3 ثوانٍ أثناء البث فقط، ويتوقف مع إخفاء الصفحة
   useEffect(() => {
@@ -244,39 +288,41 @@ export default function LiveClassPage() {
     };
   }, [isLive, session?._id, session?.status]);
 
+  const markLeftHttp = useCallback((sessionId) => {
+    if (!sessionId) return;
+    // Best-effort: records attendees.leftAt for duration tracking (replaces socket leave-session)
+    api.post(`/live/${sessionId}/leave`).catch(() => {});
+  }, []);
+
   const handleLeave = () => {
-    const socket = getSocket();
-    if (socket && session?._id) {
-      socket.emit('leave-session', {
-        sessionId: session._id,
-      });
-    }
+    if (session?._id) markLeftHttp(session._id);
     setVoluntarilyLeft(true);
     resetLive();
     setDuration(0);
+    setPingActive(null);
     toast('خرجت من الجلسة');
   };
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const socket = getSocket();
-      if (socket && session?._id) {
-        socket.emit('leave-session', {
-          sessionId: session._id,
-        });
+      if (session?._id) {
+        try {
+          const base = (api.defaults?.baseURL || '').replace(/\/$/, '');
+          const url = `${base}/live/${session._id}/leave`;
+          if (navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify({})], { type: 'application/json' });
+            // Authorization header can't be set in sendBeacon; server middleware also accepts cookie/query — best effort
+            navigator.sendBeacon(url, blob);
+          }
+        } catch (_) {}
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      const socket = getSocket();
-      if (socket && session?._id) {
-        socket.emit('leave-session', {
-          sessionId: session._id,
-        });
-      }
+      if (session?._id) markLeftHttp(session._id);
     };
-  }, [session?._id]);
+  }, [session?._id, markLeftHttp]);
 
   const handleRejoin = async () => {
     setVoluntarilyLeft(false);

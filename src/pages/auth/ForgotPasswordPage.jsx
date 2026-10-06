@@ -8,20 +8,25 @@ import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import './Auth.css';
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [sentMessage, setSentMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email.trim()) {
-      toast.error('البريد الإلكتروني مطلوب');
+    if (!identifier.trim()) {
+      toast.error('رقم الهاتف أو البريد الإلكتروني مطلوب');
       return;
     }
 
     setIsLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email: email.trim() });
+      const res = await api.post('/auth/forgot-password', {
+        identifier: identifier.trim(),
+        email: identifier.trim(),
+      });
+      setSentMessage(res.data?.message || '');
       setIsSent(true);
     } catch (error) {
       toast.error(error?.response?.data?.message || 'حدث خطأ، حاول مجدداً');
@@ -51,7 +56,7 @@ export default function ForgotPasswordPage() {
               <span className="font-bold text-lg" style={{ color: '#2A2438' }}>الحلقة</span>
             </Link>
             <h1 className="text-2xl font-extrabold" style={{ color: '#2A2438' }}>نسيت كلمة المرور</h1>
-            <p className="mt-1" style={{ color: '#756E85' }}>أدخل بريدك الإلكتروني لإرسال رابط إعادة التعيين</p>
+            <p className="mt-1" style={{ color: '#756E85' }}>أدخل رقم هاتفك أو بريدك الإلكتروني</p>
           </div>
 
           {isSent ? (
@@ -63,9 +68,9 @@ export default function ForgotPasswordPage() {
               >
                 <CircleCheck className="w-8 h-8" style={{ color: '#177B58' }} />
               </span>
-              <h2 className="text-lg font-extrabold mb-2" style={{ color: '#2A2438' }}>تم إرسال الرابط!</h2>
+              <h2 className="text-lg font-extrabold mb-2" style={{ color: '#2A2438' }}>تم!</h2>
               <p className="text-sm mb-6" style={{ color: '#756E85' }}>
-                إذا كان البريد الإلكتروني مسجلاً لدينا، ستتلقى رابط إعادة تعيين كلمة المرور خلال دقائق.
+                {sentMessage || 'إذا كان البريد الإلكتروني مسجلاً لدينا، ستتلقى رابط إعادة تعيين كلمة المرور خلال دقائق.'}
               </p>
               <Link to="/login" className="auth-btn auth-btn-auto px-6">
                 العودة لتسجيل الدخول
@@ -74,23 +79,26 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="auth-card space-y-5">
               <div>
-                <label htmlFor="forgot-email" className="auth-label">البريد الإلكتروني</label>
+                <label htmlFor="forgot-identifier" className="auth-label">رقم الهاتف أو البريد الإلكتروني</label>
                 <div className="relative">
                   <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#756E85]" aria-hidden />
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="auth-input pr-10"
                     style={{ direction: 'ltr', textAlign: 'left' }}
-                    placeholder="your@email.com"
-                    id="forgot-email"
+                    placeholder="01xxxxxxxxx"
+                    id="forgot-identifier"
                   />
                 </div>
+                <p className="text-xs mt-2" style={{ color: '#756E85' }}>
+                  مسجل برقم الهاتف فقط؟ تواصل مع الإدارة لتعيين كلمة مرور جديدة لك.
+                </p>
               </div>
 
               <button type="submit" disabled={isLoading} className="auth-btn">
-                {isLoading ? <LoadingSpinner size="sm" color="white" /> : 'إرسال رابط إعادة التعيين'}
+                {isLoading ? <LoadingSpinner size="sm" color="white" /> : 'متابعة'}
               </button>
 
               <p className="text-center text-sm pt-1" style={{ color: '#756E85' }}>

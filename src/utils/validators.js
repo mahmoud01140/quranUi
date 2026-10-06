@@ -11,10 +11,26 @@ export const validatePassword = (password) => {
   return null;
 };
 
-export const validatePhone = (phone) => {
-  if (!phone) return null; // optional
-  const re = /^[+]?[\d\s\-()]{8,15}$/;
-  return re.test(phone) ? null : 'رقم الهاتف غير صحيح';
+/**
+ * توحيد الرقم المصري إلى 01xxxxxxxxx (مطابق لمنطق السيرفر).
+ * يُرجع الرقم الموحد أو null.
+ */
+export const normalizePhoneEG = (raw) => {
+  if (!raw || typeof raw !== 'string') return null;
+  let digits = raw.replace(/[^\d]/g, '');
+  if (digits.startsWith('0020')) digits = digits.slice(4);
+  else if (digits.startsWith('20') && digits.length === 12) digits = digits.slice(2);
+  if (digits.length === 10 && digits.startsWith('1')) digits = `0${digits}`;
+  return /^01[0125]\d{8}$/.test(digits) ? digits : null;
+};
+
+export const validatePhone = (phone, { required = false } = {}) => {
+  if (!phone || !String(phone).trim()) {
+    return required ? 'رقم الهاتف مطلوب — أدخل رقماً مصرياً (01xxxxxxxxx)' : null;
+  }
+  return normalizePhoneEG(phone)
+    ? null
+    : 'رقم الهاتف غير صحيح — أدخل رقماً مصرياً (01xxxxxxxxx)';
 };
 
 export const validateRequired = (value, fieldName = 'الحقل') => {
@@ -30,21 +46,23 @@ export const validateRegisterForm = (data) => {
   if (!data.firstName?.trim()) errors.firstName = 'الاسم الأول مطلوب';
   if (!data.lastName?.trim()) errors.lastName = 'اسم العائلة مطلوب';
   
-  const emailErr = validateEmail(data.email);
-  if (emailErr) errors.email = emailErr;
-  
+  // البريد اختياري (للاستعادة) — يُتحقق منه فقط عند إدخاله
+  if (data.email?.trim()) {
+    const emailErr = validateEmail(data.email.trim());
+    if (emailErr) errors.email = emailErr;
+  }
+
+  // الهاتف هو معرّف الدخول — مطلوب وفريد
+  const phoneErr = validatePhone(data.phone, { required: true });
+  if (phoneErr) errors.phone = phoneErr;
+
   const passErr = validatePassword(data.password);
   if (passErr) errors.password = passErr;
-  
+
   if (data.confirmPassword !== undefined && data.password !== data.confirmPassword) {
     errors.confirmPassword = 'كلمتا المرور غير متطابقتين';
   }
-  
-  if (data.phone) {
-    const phoneErr = validatePhone(data.phone);
-    if (phoneErr) errors.phone = phoneErr;
-  }
-  
+
   return errors;
 };
 

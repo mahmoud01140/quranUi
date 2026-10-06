@@ -146,6 +146,24 @@ export const getSubscriptionBlockReason = (sub) => {
   return 'trial_used';
 };
 
+// ── Admin subscription badge (raw user.subscription subdocument) ──
+// Returns { key, label, tone, days } — days = remaining days or null
+export const getSubscriptionInfo = (sub) => {
+  if (!sub) return { key: 'none', label: 'بلا اشتراك', tone: 'neutral', days: null };
+  const end = sub.endDate ? new Date(sub.endDate) : null;
+  const expired = end ? end <= new Date() : sub.status === 'expired';
+  if (sub.status === 'active' && !expired) {
+    const days = end ? Math.max(0, Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24))) : null;
+    return { key: 'active', label: 'مشترك نشط', tone: 'mentor', days };
+  }
+  const attended = sub.trialSessionsAttended || 0;
+  const allowed = sub.trialSessionsAllowed || 1;
+  if (!expired && attended < allowed) {
+    return { key: 'trial', label: 'تجريبي', tone: 'gold', days: null };
+  }
+  return { key: 'expired', label: 'منتهي', tone: 'neutral', days: 0 };
+};
+
 // ── Unified "no group yet" copy — same expectation on every student screen ──
 export const NO_GROUP_TITLE = 'لم تُعيَّن في مجموعة بعد';
 export const NO_GROUP_HINT = 'الإدارة تسكّنك في مجموعة تناسب مستواك — ريثما يتم ذلك تابع المصحف ووردك اليومي.';
