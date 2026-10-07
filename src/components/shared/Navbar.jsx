@@ -1,10 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, User, Menu, X, BookOpen, ChevronDown } from 'lucide-react';
+import { LogOut, User, Menu, X, BookOpen, ChevronDown, KeyRound } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import NotificationBell from './NotificationBell';
+import ChangePasswordModal from './ChangePasswordModal';
 import { getInitials, getAvatarColor } from '../../utils/helpers';
 
 export default function Navbar({ onMenuClick }) {
@@ -14,6 +15,7 @@ export default function Navbar({ onMenuClick }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   // Track scroll for navbar style change
   useEffect(() => {
@@ -128,13 +130,20 @@ export default function Navbar({ onMenuClick }) {
                       </div>
 
                       {/* Menu items */}
-                      <div className="p-2">
+                      <div className="p-2 space-y-1">
                         <button
                           onClick={() => { setProfileOpen(false); navigate(dashboardPath); }}
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#2A2438] hover:bg-[#FBF7EE] transition-colors"
                         >
                           <User className="w-4 h-4 text-[#756E85]" />
                           لوحة التحكم
+                        </button>
+                        <button
+                          onClick={() => { setProfileOpen(false); setChangePasswordOpen(true); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-[#2A2438] hover:bg-[#FBF7EE] transition-colors"
+                        >
+                          <KeyRound className="w-4 h-4 text-[#177B58]" />
+                          تغيير كلمة المرور
                         </button>
                       </div>
 
@@ -152,6 +161,13 @@ export default function Navbar({ onMenuClick }) {
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Change Password Modal */}
+              <ChangePasswordModal
+                isOpen={changePasswordOpen}
+                onClose={() => setChangePasswordOpen(false)}
+              />
+
             </>
           ) : (
             <div className="flex items-center gap-2">

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   PhoneOff, UserCheck, BookOpen,
-  MessageSquare, X, ClipboardList, Award
+  MessageSquare, X, ClipboardList, Award,
+  Clock, User, ChevronDown, ChevronUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/shared/Navbar';
@@ -40,6 +41,8 @@ export default function LiveBroadcastPage() {
   const [duration, setDuration] = useState(0);
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(true);
+
 
   // Individual 1-on-1 state (passed from the start-live action)
   const studentId = location.state?.studentId;
@@ -250,59 +253,100 @@ export default function LiveBroadcastPage() {
 
   // Live broadcast view with Jitsi Meet
   return (
-    <div className="halaqa" dir="rtl" style={{ height: '100vh', maxHeight: '100dvh', background: HQ.PAPER, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Top bar — paper chrome, the stage below is the only dark area */}
-      <div style={{ background: HQ.SURFACE, borderBottom: `1px solid ${HQ.LINE}`, padding: '0 16px', height: 56, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#C2410C', color: '#fff', padding: '6px 12px', borderRadius: 12, fontSize: 13, fontWeight: 800, flex: 'none' }}>
+    <div
+      className="halaqa flex flex-col overflow-hidden"
+      dir="rtl"
+      style={{
+        height: '100vh',
+        height: '100dvh',
+        background: HQ.PAPER,
+      }}
+    >
+      {/* Top bar — Responsive header */}
+      <header
+        style={{
+          background: HQ.SURFACE,
+          borderBottom: `1px solid ${HQ.LINE}`,
+          flex: 'none',
+        }}
+        className="px-2.5 sm:px-4 h-14 flex items-center justify-between gap-2 z-20 shadow-xs"
+      >
+        {/* Right side: Live badge, Timer, Student Name & Title */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+          <span className="inline-flex items-center gap-1.5 bg-[#C2410C] text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs sm:text-sm font-black flex-none shadow-xs">
             <span className="hq-live-dot" aria-hidden />
-            بث مباشر
+            <span className="hidden xs:inline">بث مباشر</span>
+            <span className="xs:hidden">مباشر</span>
           </span>
-          <h1 style={{ color: HQ.INK, fontWeight: 800, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} className="hidden sm:block">{sessionTitle}</h1>
+
+          <span
+            className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold px-2 py-1 rounded-lg border font-mono flex-none"
+            style={{
+              color: HQ.INK,
+              background: HQ.PAPER,
+              borderColor: HQ.LINE,
+            }}
+          >
+            <Clock size={12} className="text-[#C2410C]" />
+            {formatCountdown(duration)}
+          </span>
+
           {studentName && (
-            <span className="hidden md:inline-flex" style={{ alignItems: 'center', gap: 4, fontSize: 12, background: '#E2EFE7', color: HQ.MENTOR, padding: '4px 10px', borderRadius: 9999, fontWeight: 700 }}>
-              <BookOpen size={12} />
-              {studentName}
+            <span
+              className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 sm:py-1 rounded-full truncate max-w-[120px] sm:max-w-[180px] md:max-w-none"
+              style={{ background: '#E2EFE7', color: HQ.MENTOR }}
+              title={studentName}
+            >
+              <User size={12} className="flex-none" />
+              <span className="truncate">{studentName}</span>
             </span>
           )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
-          <span style={{ color: HQ.MUTED, fontSize: 13, fontWeight: 700 }} className="hidden sm:inline">{formatCountdown(duration)}</span>
 
+          <h1
+            style={{ color: HQ.INK }}
+            className="hidden lg:block font-extrabold text-xs sm:text-sm truncate max-w-xs"
+            title={sessionTitle}
+          >
+            {sessionTitle}
+          </h1>
+        </div>
+
+        {/* Desktop toolbar buttons (md and up) */}
+        <div className="hidden md:flex items-center gap-1.5 lg:gap-2 flex-none">
           {/* Attendance Button */}
           <button
             onClick={() => setShowAttendanceDrawer(true)}
             className="hq-action"
-            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13 }}
+            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 12px', fontSize: 13 }}
             title="الحضور"
           >
             <UserCheck size={16} />
-            <span className="hidden sm:inline">الحضور</span>
+            <span>الحضور</span>
           </button>
 
           {/* Wird Button */}
           <button
             onClick={openWirdModal}
             className="hq-action"
-            style={{ background: HQ.MENTOR, color: '#fff', padding: '0 14px', fontSize: 13 }}
+            style={{ background: HQ.MENTOR, color: '#fff', padding: '0 12px', fontSize: 13 }}
             title="إعطاء ورد للطالب أثناء البث"
           >
             <BookOpen size={16} />
-            <span className="hidden sm:inline">الورد</span>
+            <span>الورد</span>
           </button>
 
-          {/* Required recitation (previous wird) Button */}
+          {/* Required recitation Button */}
           <button
             onClick={() => {
               if (!studentId) { toast.error('لا يوجد طالب مرتبط بالجلسة'); return; }
               setShowPrevWirdModal(true);
             }}
             className="hq-action"
-            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13 }}
+            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 12px', fontSize: 13 }}
             title="الورد المطلوب تسميعه — آخر ورد أُسند قبل اليوم"
           >
             <ClipboardList size={16} />
-            <span className="hidden sm:inline">المطلوب تسميعه</span>
+            <span>المطلوب تسميعه</span>
           </button>
 
           {/* Recitation evaluation Button */}
@@ -312,38 +356,75 @@ export default function LiveBroadcastPage() {
               setShowEvalModal(true);
             }}
             className="hq-action"
-            style={{ background: '#F8EDD3', border: '1px solid #D9A441', color: '#7C5A12', padding: '0 14px', fontSize: 13 }}
+            style={{ background: '#F8EDD3', border: '1px solid #D9A441', color: '#7C5A12', padding: '0 12px', fontSize: 13 }}
             title="تقييم تسميع الطالب ووضع ملاحظات تظهر في التقارير"
           >
             <Award size={16} />
-            <span className="hidden sm:inline">تقييم التسميع</span>
+            <span>تقييم التسميع</span>
           </button>
 
           {/* Shared mushaf Button */}
           <button
             onClick={openMushaf}
             className="hq-action"
-            style={{ background: mushafSharing ? HQ.MENTOR : HQ.PAPER, color: mushafSharing ? '#fff' : HQ.INK, border: mushafSharing ? 'none' : `1px solid ${HQ.LINE}`, padding: '0 14px', fontSize: 13 }}
+            style={{
+              background: mushafSharing ? HQ.MENTOR : HQ.PAPER,
+              color: mushafSharing ? '#fff' : HQ.INK,
+              border: mushafSharing ? 'none' : `1px solid ${HQ.LINE}`,
+              padding: '0 12px',
+              fontSize: 13
+            }}
             title="المصحف المشترك مع الطالب"
           >
             <BookOpen size={16} />
-            <span className="hidden sm:inline">المصحف{mushafSharing ? ' • مشارَك' : ''}</span>
+            <span>المصحف{mushafSharing ? ' • مشارَك' : ''}</span>
           </button>
 
+          {/* End Broadcast Button (Desktop) */}
           <button
             onClick={handleEndBroadcast}
             className="hq-action"
             style={{ background: '#C2410C', color: '#fff', padding: '0 14px', fontSize: 13 }}
           >
             <PhoneOff size={16} />
-            <span className="hidden sm:inline">إنهاء البث</span>
+            <span>إنهاء البث</span>
           </button>
         </div>
-      </div>
 
-      {/* Jitsi Meeting Container — the dark stage */}
-      <div className="m-stage" style={{ flex: 1, minHeight: 0, padding: 16, paddingTop: 8 }}>
-        <div className="halaqa-stage" style={{ height: '100%', borderRadius: 18, overflow: 'hidden', position: 'relative' }}>
+        {/* Mobile controls in top bar (< md) */}
+        <div className="flex md:hidden items-center gap-1.5 flex-none">
+          <button
+            type="button"
+            onClick={() => setMobileControlsOpen(!mobileControlsOpen)}
+            className="py-1 px-2 rounded-xl border transition-colors flex items-center gap-1 text-xs font-bold"
+            style={{
+              background: mobileControlsOpen ? '#E2EFE7' : HQ.PAPER,
+              borderColor: mobileControlsOpen ? HQ.MENTOR : HQ.LINE,
+              color: mobileControlsOpen ? HQ.MENTOR : HQ.INK,
+            }}
+            title={mobileControlsOpen ? 'إخفاء أدوات التحكم' : 'إظهار أدوات التحكم'}
+          >
+            {mobileControlsOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            <span className="text-[11px]">الأدوات</span>
+          </button>
+
+          <button
+            onClick={handleEndBroadcast}
+            className="inline-flex items-center gap-1 bg-[#C2410C] hover:bg-[#9A3412] text-white px-2.5 py-1.5 rounded-xl text-xs font-black shadow-xs transition-colors"
+            title="إنهاء البث"
+          >
+            <PhoneOff size={13} />
+            <span>إنهاء</span>
+          </button>
+        </div>
+      </header>
+
+      {/* Jitsi Meeting Container — the stage */}
+      <main className="m-stage flex-1 min-h-0 relative p-1 sm:p-2 md:p-3 overflow-hidden">
+        <div
+          className="halaqa-stage w-full h-full rounded-xl sm:rounded-2xl overflow-hidden relative shadow-inner"
+          style={{ background: '#0F172A' }}
+        >
           <JitsiMeeting
             roomName={session?.liveRoomName || `QuranPlatform_${session?._id || 'Session'}`}
             displayName={`أ. ${user?.firstName || ''} ${user?.lastName || ''}`}
@@ -352,7 +433,81 @@ export default function LiveBroadcastPage() {
             onLeave={handleEndBroadcast}
           />
         </div>
-      </div>
+      </main>
+
+      {/* Mobile Bottom Action Dock (< md) */}
+      {mobileControlsOpen && (
+        <aside
+          className="md:hidden flex-none z-30 transition-all duration-200"
+          style={{
+            background: 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: 'blur(12px)',
+            borderTop: `1px solid ${HQ.LINE}`,
+            paddingBottom: 'env(safe-area-inset-bottom, 6px)',
+          }}
+          aria-label="أدوات إدارة الحلقة"
+        >
+          <div className="grid grid-cols-5 gap-1 px-1.5 py-1.5 max-w-md mx-auto">
+            {/* 1. Mushaf Button */}
+            <button
+              onClick={openMushaf}
+              className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all relative ${
+                mushafSharing ? 'bg-[#E2EFE7] text-[#0F5940] ring-1 ring-[#177B58]' : 'hover:bg-[#FAF7F2] text-[#2A2438]'
+              }`}
+            >
+              <div className="relative">
+                <BookOpen size={18} className={mushafSharing ? 'text-[#177B58]' : 'text-[#4A3F6B]'} />
+                {mushafSharing && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#177B58] ring-2 ring-white" />
+                )}
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold mt-1 leading-tight">المصحف</span>
+            </button>
+
+            {/* 2. Assign Wird Button */}
+            <button
+              onClick={openWirdModal}
+              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl hover:bg-[#FAF7F2] text-[#2A2438] transition-all"
+            >
+              <BookOpen size={18} className="text-[#177B58]" />
+              <span className="text-[10px] sm:text-[11px] font-bold mt-1 leading-tight">الورد</span>
+            </button>
+
+            {/* 3. Previous Wird (Required) Button */}
+            <button
+              onClick={() => {
+                if (!studentId) { toast.error('لا يوجد طالب مرتبط بالجلسة'); return; }
+                setShowPrevWirdModal(true);
+              }}
+              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl hover:bg-[#FAF7F2] text-[#2A2438] transition-all"
+            >
+              <ClipboardList size={18} className="text-[#2563EB]" />
+              <span className="text-[10px] sm:text-[11px] font-bold mt-1 leading-tight">المطلوب</span>
+            </button>
+
+            {/* 4. Recitation Evaluation Button */}
+            <button
+              onClick={() => {
+                if (!studentId) { toast.error('لا يوجد طالب مرتبط بالجلسة'); return; }
+                setShowEvalModal(true);
+              }}
+              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl hover:bg-[#FAF7F2] text-[#2A2438] transition-all"
+            >
+              <Award size={18} className="text-[#D97706]" />
+              <span className="text-[10px] sm:text-[11px] font-bold mt-1 leading-tight">التقييم</span>
+            </button>
+
+            {/* 5. Attendance Button */}
+            <button
+              onClick={() => setShowAttendanceDrawer(true)}
+              className="flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl hover:bg-[#FAF7F2] text-[#2A2438] transition-all"
+            >
+              <UserCheck size={18} className="text-[#756E85]" />
+              <span className="text-[10px] sm:text-[11px] font-bold mt-1 leading-tight">الحضور</span>
+            </button>
+          </div>
+        </aside>
+      )}
 
       {/* Live Attendance */}
       <LiveAttendanceDrawer
@@ -402,9 +557,9 @@ export default function LiveBroadcastPage() {
       {/* Shared mushaf overlay sheet */}
       {showMushaf && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9995, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(12,12,29,0.55)' }}>
-          <div className="halaqa" dir="rtl" style={{
-            background: HQ.SURFACE, borderRadius: '20px 20px 0 0', padding: 16,
-            width: '100%', maxWidth: 720, height: '82dvh', maxHeight: 640,
+          <div className="halaqa w-full max-w-3xl" dir="rtl" style={{
+            background: HQ.SURFACE, borderRadius: '20px 20px 0 0', padding: 12,
+            height: '88dvh', maxHeight: 680,
             border: `1px solid ${HQ.LINE}`, borderBottom: 'none',
           }}>
             <MushafSharePanel
@@ -419,6 +574,7 @@ export default function LiveBroadcastPage() {
           </div>
         </div>
       )}
+
 
       {/* Edit Created Lesson Modal (after broadcast ends) */}
       {showEditLessonModal && (

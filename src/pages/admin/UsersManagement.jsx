@@ -11,6 +11,7 @@ import { notifySubscriptionWarning, fetchSubscriptionWarning, isBlockingWarning 
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PhoneChip from '../../components/shared/PhoneChip';
 import ConfirmModal from '../../components/shared/ConfirmModal';
+import ChangePasswordModal from '../../components/shared/ChangePasswordModal';
 import StudentLessonsModal from '../../components/shared/StudentLessonsModal';
 import SessionTimePicker from '../../components/shared/SessionTimePicker';
 import Pagination from '../../components/shared/Pagination';
@@ -345,6 +346,7 @@ export default function UsersManagement() {
   const [pwResetResult, setPwResetResult] = useState('');
   const [pwResetting, setPwResetting] = useState(false);
   const [copiedPw, setCopiedPw] = useState(false);
+  const [changePwModalOpen, setChangePwModalOpen] = useState(false);
 
   const handleRoleChange = async () => {
     if (!roleConfirm) return;
@@ -390,10 +392,35 @@ export default function UsersManagement() {
   return (
     <PageLayout>
       <div className="halaqa" style={{ maxWidth: 860, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK }}>المستخدمون</h1>
-        <p style={{ margin: '0 0 16px', fontSize: 14, color: HQ.MUTED }}>
-          {totalItems} مستخدم مسجل{pendingCount ? ` · ${pendingCount} بانتظار الاعتماد` : ''} — قبول، تغيير أدوار، وحذف نهائي من مكان واحد
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK }}>المستخدمون</h1>
+            <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED }}>
+              {totalItems} مستخدم مسجل{pendingCount ? ` · ${pendingCount} بانتظار الاعتماد` : ''} — قبول، تغيير أدوار، وحذف نهائي من مكان واحد
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setChangePwModalOpen(true)}
+            className="hq-action"
+            style={{
+              background: HQ.MENTOR,
+              color: '#fff',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 14,
+              fontWeight: 700,
+              padding: '10px 16px',
+              borderRadius: 12,
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <KeyRound size={16} />
+            تغيير كلمة المرور الخاصة بي
+          </button>
+        </div>
 
         {/* Search & filters */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -580,12 +607,18 @@ export default function UsersManagement() {
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>
-                          <button type="button" onClick={() => { setPwResetUser(u); setPwResetResult(null); setCopiedPw(false); }}
+                          <button type="button" onClick={() => {
+                            if (self) {
+                              setChangePwModalOpen(true);
+                            } else {
+                              setPwResetUser(u); setPwResetResult(null); setCopiedPw(false);
+                            }
+                          }}
                             disabled={actingId === u._id}
-                            aria-label={`تعيين كلمة مرور مؤقتة لـ ${u.firstName}`}
-                            title="تعيين كلمة مرور مؤقتة لمن نسيها (تُعرض مرة واحدة لإيصالها له)"
+                            aria-label={self ? 'تغيير كلمة المرور الخاصة بي' : `تعيين كلمة مرور مؤقتة لـ ${u.firstName}`}
+                            title={self ? 'تغيير كلمة المرور الخاصة بي' : 'تعيين كلمة مرور مؤقتة لمن نسيها (تُعرض مرة واحدة لإيصالها له)'}
                             className="hq-action" style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <KeyRound size={16} /> كلمة مرور
+                            <KeyRound size={16} /> {self ? 'تغيير كلمة المرور' : 'كلمة مرور'}
                           </button>
                           <button type="button" onClick={() => setDeleteConfirm(u)}
                             disabled={self || actingId === u._id}
@@ -1002,7 +1035,14 @@ export default function UsersManagement() {
           }}
           onClose={() => setSubConfirm(null)}
         />
+
+        {/* Change Admin Password Modal */}
+        <ChangePasswordModal
+          isOpen={changePwModalOpen}
+          onClose={() => setChangePwModalOpen(false)}
+        />
       </div>
     </PageLayout>
   );
 }
+
