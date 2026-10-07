@@ -82,7 +82,7 @@ export default function StudentDiscussionPage() {
 
   return (
     <PageLayout>
-      <div className="halaqa" style={{ maxWidth: 880, margin: '0 auto', height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+      <div className="halaqa" style={{ maxWidth: 880, margin: '0 auto', minHeight: 'calc(100vh - 120px)', height: 'calc(100dvh - 120px)', display: 'flex', flexDirection: 'column' }}>
         
         {/* Header */}
         <div

@@ -118,26 +118,26 @@ export default function AdminExamResultsPage() {
                   const isPending = result.status === 'pending_oral_review';
                   return (
                     <tr key={result._id}>
-                      <td>
+                      <td data-label="الطالب">
                         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <HqAvatar firstName={result.student?.firstName} lastName={result.student?.lastName} size={34} />
                           <strong>{result.student?.firstName} {result.student?.lastName}</strong>
                         </span>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="الدرجة" style={{ textAlign: 'center' }}>
                         <strong style={{ fontSize: 18, color: result.isPassed ? HQ.MENTOR : score > 0 ? '#C2410C' : HQ.MUTED }}>
                           {score > 0 ? `${score}%` : '—'}
                         </strong>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="الحالة" style={{ textAlign: 'center' }}>
                         {isPending ? <HqBadge tone="gold">قيد المراجعة</HqBadge>
                           : result.isPassed ? <HqBadge tone="mentor">ناجح</HqBadge>
                           : <HqBadge tone="neutral">يحتاج مراجعة</HqBadge>}
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: 13, color: HQ.MUTED, whiteSpace: 'nowrap' }}>
+                      <td data-label="التاريخ" style={{ textAlign: 'center', fontSize: 13, color: HQ.MUTED, whiteSpace: 'nowrap' }}>
                         {formatDateAr(result.submittedAt)}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="إجراء" style={{ textAlign: 'center' }}>
                         {result.oralRecordings?.length > 0 && (
                           <button type="button"
                             onClick={() => {

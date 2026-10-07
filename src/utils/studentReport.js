@@ -133,9 +133,19 @@ function buildHtml(report) {
   .card b { display: block; font-size: 20px; color: #0F5940; }
   .card span { font-size: 12px; color: #666; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
-  th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: right; }
+  th, td { border: 1px solid #ddd; padding: 8px 10px; text-align: right; overflow-wrap: break-word; word-break: break-word; }
   th { background: #E2EFE7; color: #0F5940; }
   tr:nth-child(even) td { background: #fafafa; }
+  @media (max-width: 640px) {
+    body { padding: 12px; }
+    table, thead, tbody, tr, td, th { display: block; width: 100%; }
+    thead { display: none; }
+    tr { border: 1px solid #ddd; border-radius: 12px; margin-bottom: 10px; }
+    td { border: none !important; border-bottom: 1px solid #eee !important; }
+    td:last-child { border-bottom: none !important; }
+    .cards { flex-direction: column; }
+    .card { min-width: 0; }
+  }
   .muted { color: #888; font-size: 13px; }
   .footer { margin-top: 28px; font-size: 12px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
   @media print { body { padding: 0; } .no-print { display: none; } }

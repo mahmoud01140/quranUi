@@ -20,7 +20,7 @@ export default function PageLayout({ children, className = '' }) {
       <Navbar onMenuClick={() => setSidebarOpen(true)} />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <main className="lg:mr-64 pt-16 pb-20 lg:pb-8 flex-1">
+      <main className="lg:mr-64 pt-16 pb-28 lg:pb-8 flex-1">
         <motion.div
           variants={pageVariants}
           initial="initial"

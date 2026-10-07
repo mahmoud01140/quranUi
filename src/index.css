@@ -376,3 +376,68 @@ a, button, input, select, textarea, [role="button"] {
   -webkit-user-select: none;
 }
 
+/* ═══════════════════════════════════════════════
+   Mobile-First Hardening (presentation only — no logic)
+   ═══════════════════════════════════════════════ */
+
+/* 1. Horizontal scroll lock (clip keeps position:sticky working) */
+html, body {
+  overflow-x: clip;
+}
+@supports not (overflow: clip) {
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
+/* 2. Prevent iOS Safari auto-zoom on focus (inputs must be >= 16px) */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* 3. Touch targets: icon-only close buttons up to the 44px standard */
+.halaqa button[aria-label="إغلاق"] {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* 4. Long Arabic text never overflows narrow screens */
+.halaqa h1, .halaqa h2, .halaqa h3, .halaqa strong {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.m-break {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 5. Audio slider: bigger thumb + taller hit area on phones */
+@media (max-width: 768px) {
+  .audio-range-slider {
+    height: 8px;
+  }
+  .audio-range-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+  .audio-range-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* 6. Dialogs respect dynamic viewport + bottom safe-area on phones */
+@media (max-width: 768px) {
+  .halaqa [role="dialog"] {
+    max-height: calc(92dvh - env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* 7. Fixed bottom bars (audio player) clear the home indicator.
+   MobileBottomNav sets its own inline padding, so this only affects others. */
+.halaqa.fixed.bottom-0 {
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px));
+}
+

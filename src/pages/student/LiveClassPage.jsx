@@ -423,7 +423,7 @@ export default function LiveClassPage() {
 
   return (
     <div className="halaqa" dir="rtl"
-      style={{ height: '100vh', maxHeight: '100dvh', width: '100%', background: HQ.PAPER, display: 'flex', flexDirection: 'column', overflow: 'hidden', userSelect: 'none' }}>
+      style={{ minHeight: '100vh', height: '100dvh', width: '100%', background: HQ.PAPER, display: 'flex', flexDirection: 'column', overflow: 'hidden', userSelect: 'none' }}>
       {/* Slim paper header — chrome stays paper, only the stage is dark */}
       <header style={{ background: HQ.SURFACE, borderBottom: `1px solid ${HQ.LINE}`, padding: '0 12px', height: 56, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
