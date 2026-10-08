@@ -32,9 +32,8 @@ export default function LoginPage() {
       else if (u.role === 'teacher') navigate('/teacher');
       else if (u.role === 'parent') navigate('/parent');
       else if (u.placementExamTaken) {
-        // Already took the exam — go to dashboard or waiting
-        if (u.assignedLevel) navigate('/student');
-        else navigate('/waiting-approval');
+        if (!u.sessionTime || !u.scheduleDays?.length) navigate('/onboarding/schedule');
+        else navigate('/student');
       }
       else if (!u.assignedLevel) navigate('/onboarding/type');
       else navigate('/student');

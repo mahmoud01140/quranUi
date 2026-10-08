@@ -257,7 +257,6 @@ export default function LiveBroadcastPage() {
       className="halaqa flex flex-col overflow-hidden"
       dir="rtl"
       style={{
-        height: '100vh',
         height: '100dvh',
         background: HQ.PAPER,
       }}

@@ -45,6 +45,17 @@ export default function WaitingApprovalPage() {
     return 'unsupported';
   });
 
+  // Auto-redirect if exam is taken: either to schedule selection or dashboard
+  useEffect(() => {
+    if (user && user.role === 'student' && user.placementExamTaken) {
+      if (!user.sessionTime || !user.scheduleDays?.length) {
+        navigate('/onboarding/schedule', { replace: true });
+      } else {
+        navigate('/student', { replace: true });
+      }
+    }
+  }, [user, navigate]);
+
   // Vercel-safe: poll user + notifications every 15s (replaces socket.io notification push).
   // Toasts once when level gets approved.
   useEffect(() => {

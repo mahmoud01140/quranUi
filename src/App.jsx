@@ -192,9 +192,8 @@ function getDashboardPath(user) {
 
   // Student flow: check if placement exam was taken
   if (user.placementExamTaken) {
-    // Exam was taken — go to dashboard if level assigned, or waiting page
-    if (user.assignedLevel) return '/student';
-    return '/waiting-approval';
+    if (!user.sessionTime || !user.scheduleDays?.length) return '/onboarding/schedule';
+    return '/student';
   }
 
   // New user — hasn't taken exam yet

@@ -94,24 +94,25 @@ export default function ProtectedRoute({ children, role }) {
       return children;
     }
 
-    // 3. Written done but level not confirmed yet → waiting room
-    //    (oral-exam return is allowed so the mandatory oral can be completed).
+    // 3. Exam done: allow schedule booking & result
     const isOralRoute = location.pathname === '/onboarding/oral-exam';
     const isResultRoute = location.pathname === '/onboarding/result';
-    const oralPending =
-      typeof localStorage !== 'undefined' &&
-      localStorage.getItem(`oral_pending_${user._id}`) === '1';
-    if (isOnboardingRoute && !isOralRoute && !isResultRoute && user.placementExamTaken) {
-      if (user.assignedLevel) {
-        return <Navigate to="/student" replace />;
-      }
-      return <Navigate to="/waiting-approval" replace />;
+    const isScheduleRoute = location.pathname === '/onboarding/schedule';
+
+    // If user is on schedule page, allow them to book their slot
+    if (isScheduleRoute) {
+      return children;
     }
-    if (isOralRoute && user.assignedLevel && !oralPending) {
+
+    if (isOnboardingRoute && !isOralRoute && !isResultRoute && user.placementExamTaken) {
+      if (!user.sessionTime || !user.scheduleDays?.length) {
+        return <Navigate to="/onboarding/schedule" replace />;
+      }
       return <Navigate to="/student" replace />;
     }
-    if (isStudentRoute && !user.assignedLevel && !isSubExempt) {
-      return <Navigate to="/waiting-approval" replace />;
+
+    if (isStudentRoute && (!user.sessionTime || !user.scheduleDays?.length)) {
+      return <Navigate to="/onboarding/schedule" replace />;
     }
   }
 
