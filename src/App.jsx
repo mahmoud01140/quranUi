@@ -27,6 +27,7 @@ const WrittenExamPage = lazy(() => import('./pages/onboarding/WrittenExamPage'))
 const OralExamPage = lazy(() => import('./pages/onboarding/OralExamPage'));
 const ResultPage = lazy(() => import('./pages/onboarding/ResultPage'));
 const WaitingApprovalPage = lazy(() => import('./pages/onboarding/WaitingApprovalPage'));
+const StudentScheduleBookingPage = lazy(() => import('./pages/onboarding/StudentScheduleBookingPage'));
 
 // Student
 const StudentDashboard = lazy(() => import('./pages/student/StudentDashboard'));
@@ -113,6 +114,7 @@ export default function App() {
             <Route path="/onboarding/written-exam" element={<ProtectedRoute><WrittenExamPage /></ProtectedRoute>} />
             <Route path="/onboarding/oral-exam" element={<ProtectedRoute><OralExamPage /></ProtectedRoute>} />
             <Route path="/onboarding/result" element={<ProtectedRoute><ResultPage /></ProtectedRoute>} />
+            <Route path="/onboarding/schedule" element={<ProtectedRoute><StudentScheduleBookingPage /></ProtectedRoute>} />
 
             {/* Student routes */}
             <Route path="/student" element={<ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>} />

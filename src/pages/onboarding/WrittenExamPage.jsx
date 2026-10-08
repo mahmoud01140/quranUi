@@ -236,7 +236,7 @@ export default function WrittenExamPage() {
   // Redirect if already completed
   useEffect(() => {
     if (placementCompleted && placementResult) {
-      navigate('/onboarding/result', { state: { resultId: placementResult._id }, replace: true });
+      navigate('/onboarding/schedule', { state: { resultId: placementResult._id }, replace: true });
     }
   }, [placementCompleted, placementResult, navigate]);
 
@@ -277,8 +277,8 @@ export default function WrittenExamPage() {
       localStorage.removeItem(`oral_context_${user?._id}`);
     } catch (_) {}
 
-    toast.success('تم تسليم الامتحان بنجاح!');
-    navigate('/onboarding/result', { state: { resultId: result._id } });
+    toast.success('تم تسليم الامتحان وتحديد مستواك بنجاح!');
+    navigate('/onboarding/schedule', { state: { resultId: result._id } });
   };
 
   // Answered = MCQ/true-false choices + saved recitation recordings

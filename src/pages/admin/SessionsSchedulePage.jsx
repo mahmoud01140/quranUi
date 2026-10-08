@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RotateCcw, Radio, CheckCircle, Check, BookOpen, X, MessageCircle, Pencil, Award, Plus, Trash2, Download, CreditCard } from 'lucide-react';
+import { RotateCcw, Radio, CheckCircle, Check, BookOpen, X, MessageCircle, Pencil, Award, Plus, Trash2, Download, CreditCard, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageLayout from '../../components/shared/PageLayout';
 import WirdAssignModal from '../../components/shared/WirdAssignModal';
@@ -42,6 +42,17 @@ export default function SessionsSchedulePage() {
   const [activateDays, setActivateDays] = useState(30);
   const [now, setNow] = useState(() => new Date());
 
+  // إعدادات مواعيد المنصة ومدة المحاضرة المحددة من الأدمن
+  const [scheduleConfig, setScheduleConfig] = useState({
+    lectureDuration: 45,
+    workStartTime: '09:00',
+    workEndTime: '22:00',
+    workingDays: ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'],
+    customerServicePhone: '201012345678',
+  });
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
+
   // Student lessons modal (full: view + edit sources + exam + discussion)
   const [lessonsUser, setLessonsUser] = useState(null);
   const [lessonsLoading, setLessonsLoading] = useState(false);
@@ -77,14 +88,34 @@ export default function SessionsSchedulePage() {
     setIsLoading(true);
     setLoadFailed(false);
     try {
-      const res = await api.get('/users', { params: { role: 'student', limit: 200 } });
-      setStudents((res.data.users || []).filter(u =>
+      const [usersRes, settingsRes] = await Promise.all([
+        api.get('/users', { params: { role: 'student', limit: 200 } }),
+        api.get('/schedule/settings').catch(() => ({ data: { settings: null } })),
+      ]);
+      setStudents((usersRes.data.users || []).filter(u =>
         u.isActive !== false && (u.scheduleDays?.length) && u.sessionTime
       ));
+      if (settingsRes.data?.settings) {
+        setScheduleConfig(settingsRes.data.settings);
+      }
     } catch {
       setLoadFailed(true);
       toast.error('خطأ في جلب البيانات');
     } finally { setIsLoading(false); }
+  };
+
+  const handleSaveConfig = async (e) => {
+    e?.preventDefault?.();
+    setSavingConfig(true);
+    try {
+      const res = await api.put('/schedule/settings', scheduleConfig);
+      toast.success(res.data?.message || 'تم حفظ إعدادات المواعيد بنجاح');
+      setShowConfigModal(false);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'تعذر حفظ إعدادات المواعيد');
+    } finally {
+      setSavingConfig(false);
+    }
   };
 
   const todayName = JS_DAY_TO_AR[now.getDay()];
@@ -325,10 +356,32 @@ export default function SessionsSchedulePage() {
   return (
     <PageLayout>
       <div className="halaqa" style={{ maxWidth: 860, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK }}>مواعيد الحصص</h1>
-        <p style={{ margin: '0 0 16px', fontSize: 14, color: HQ.MUTED }}>
-          اليوم: {todayName} · {nowList.length ? `${nowList.length} حصة حان موعدها الآن` : todayUpcoming.length ? `القادمة اليوم الساعة ${formatTime12Ar(todayUpcoming[0].student.sessionTime)}` : 'لا حصص متبقية اليوم'}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <div>
+            <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK }}>مواعيد الحصص</h1>
+            <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED }}>
+              اليوم: {todayName} · {nowList.length ? `${nowList.length} حصة حان موعدها الآن` : todayUpcoming.length ? `القادمة اليوم الساعة ${formatTime12Ar(todayUpcoming[0].student.sessionTime)}` : 'لا حصص متبقية اليوم'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowConfigModal(true)}
+            className="hq-action"
+            style={{
+              background: HQ.SURFACE,
+              border: `1.5px solid ${HQ.MENTOR}`,
+              color: HQ.MENTOR,
+              padding: '0 18px',
+              fontSize: 14,
+              fontWeight: 800,
+              gap: 8,
+              boxShadow: '0 2px 8px rgba(23,123,88,0.1)',
+            }}
+          >
+            <Settings size={17} />
+            إعدادات المواعيد ومدة المحاضرة
+          </button>
+        </div>
 
         {isLoading ? (
           <div aria-label="جارٍ التحميل">
@@ -767,6 +820,177 @@ export default function SessionsSchedulePage() {
                   {savingExam ? <LoadingSpinner size="sm" /> : <><Award size={16} /> إنشاء وربط الاختبار بالحصة</>}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* نافذة تعديل إعدادات المواعيد ومدة المحاضرة وساعات العمل */}
+        {showConfigModal && (
+          <div
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(42,36,56,0.6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999, padding: 16, backdropFilter: 'blur(3px)',
+            }}
+            onClick={() => setShowConfigModal(false)}
+          >
+            <div
+              style={{
+                background: HQ.SURFACE, borderRadius: 24, maxWidth: 560, width: '100%',
+                border: `1px solid ${HQ.LINE}`, padding: 24, maxHeight: '90vh', overflowY: 'auto',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+              }}
+              onClick={e => e.stopPropagation()}
+              dir="rtl"
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: HQ.INK, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Settings size={20} color={HQ.MENTOR} />
+                  إعدادات مواعيد الحصص وجدولة الطلاب
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowConfigModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED, padding: 4 }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveConfig} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* مدة المحاضرة */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                    مدة المحاضرة الواحدة (بالدقائق) *
+                  </label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {[30, 45, 60].map(dur => (
+                      <button
+                        key={dur}
+                        type="button"
+                        onClick={() => setScheduleConfig(p => ({ ...p, lectureDuration: dur }))}
+                        style={{
+                          flex: 1, padding: '10px 0', borderRadius: 12, fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                          background: scheduleConfig.lectureDuration === dur ? HQ.MENTOR : HQ.PAPER,
+                          color: scheduleConfig.lectureDuration === dur ? '#fff' : HQ.INK,
+                          border: `1px solid ${scheduleConfig.lectureDuration === dur ? HQ.MENTOR : HQ.LINE}`,
+                        }}
+                      >
+                        {dur} دقيقة
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    min={15}
+                    max={180}
+                    value={scheduleConfig.lectureDuration || ''}
+                    onChange={e => setScheduleConfig(p => ({ ...p, lectureDuration: Number(e.target.value) }))}
+                    placeholder="أو أدخل مدة مخصصة بالدقائق..."
+                    style={{ ...selectStyle, marginTop: 8 }}
+                  />
+                  <span style={{ fontSize: 11, color: HQ.MUTED, marginTop: 4, display: 'block' }}>
+                    تُستخدم هذه المدة لحساب فترات الحصص المتاحة تلقائياً في شاشة اختيار المواعيد للطلاب الجدد.
+                  </span>
+                </div>
+
+                {/* ساعات العمل اليومية */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                      ساعة بداية العمل *
+                    </label>
+                    <input
+                      type="time"
+                      value={scheduleConfig.workStartTime || '09:00'}
+                      onChange={e => setScheduleConfig(p => ({ ...p, workStartTime: e.target.value }))}
+                      style={selectStyle}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                      ساعة نهاية العمل *
+                    </label>
+                    <input
+                      type="time"
+                      value={scheduleConfig.workEndTime || '22:00'}
+                      onChange={e => setScheduleConfig(p => ({ ...p, workEndTime: e.target.value }))}
+                      style={selectStyle}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* أيام العمل المتاحة */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                    أيام التدريس المتاحة في الأسبوع
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                    {WEEK_DAYS.map(day => {
+                      const active = (scheduleConfig.workingDays || []).includes(day);
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            setScheduleConfig(p => {
+                              const curr = p.workingDays || [];
+                              const next = active ? curr.filter(d => d !== day) : [...curr, day];
+                              return { ...p, workingDays: next };
+                            });
+                          }}
+                          style={{
+                            padding: '8px 4px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                            background: active ? '#E2EFE7' : HQ.PAPER,
+                            color: active ? '#0F5940' : HQ.MUTED,
+                            border: `1px solid ${active ? '#177B58' : HQ.LINE}`,
+                          }}
+                        >
+                          {active ? `✓ ${day}` : day}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* رقم خدمة العملاء للواتساب */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>
+                    رقم هاتف خدمة العملاء (واتساب) *
+                  </label>
+                  <input
+                    type="text"
+                    value={scheduleConfig.customerServicePhone || ''}
+                    onChange={e => setScheduleConfig(p => ({ ...p, customerServicePhone: e.target.value }))}
+                    placeholder="مثال: 201012345678 (كود الدولة بدون +)"
+                    style={selectStyle}
+                    required
+                  />
+                  <span style={{ fontSize: 11, color: HQ.MUTED, marginTop: 4, display: 'block' }}>
+                    يتم تحويل الطالب فوراً إلى هذا الرقم عبر تطبيق WhatsApp لتأكيد موعده المسجل.
+                  </span>
+                </div>
+
+                {/* الأزرار */}
+                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfigModal(false)}
+                    style={{ flex: 1, padding: '12px 0', borderRadius: 12, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingConfig}
+                    style={{ flex: 2, padding: '12px 0', borderRadius: 12, background: HQ.MENTOR, color: '#fff', border: 'none', fontWeight: 800, cursor: 'pointer' }}
+                  >
+                    {savingConfig ? 'جارٍ الحفظ...' : 'حفظ الإعدادات'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -49,15 +49,14 @@ export default function ResultPage() {
   const hasOral = (oralRecordings?.length || 0) > 0 || (displayResult?.oralRecordings?.length || 0) > 0 || (user?.oralExamRecordings?.length || 0) > 0;
 
   const handleContinue = async () => {
-    // Wait for the fresh user record — a stale store may still lack assignedLevel.
     let fresh = user;
     try {
       fresh = (await refreshUser()) || user;
     } catch (_) {}
-    if (fresh?.assignedLevel) {
-      navigate('/student');
+    if (!fresh?.sessionTime || !fresh?.scheduleDays?.length) {
+      navigate('/onboarding/schedule');
     } else {
-      navigate('/waiting-approval');
+      navigate('/student');
     }
   };
 
@@ -186,11 +185,18 @@ export default function ResultPage() {
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={handleContinue}
+              onClick={() => navigate('/onboarding/schedule')}
               className="onb-btn onb-btn-block"
+              style={{ background: '#177B58' }}
             >
-              {user?.assignedLevel ? 'الانتقال للوحة التحكم' : 'متابعة'}
+              اختيار موعد الحصص وتثبيت الجدول
               <ChevronLeft className="w-5 h-5" aria-hidden />
+            </button>
+            <button
+              onClick={handleContinue}
+              className="onb-ghost onb-btn-block"
+            >
+              الانتقال للوحة التحكم
             </button>
           </div>
         </div>
