@@ -121,60 +121,28 @@ export default function AdminDiscussionsPage() {
   return (
     <PageLayout>
       <div
-        className="halaqa"
-        style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          height: 'calc(100vh - 110px)',
-          display: 'flex',
-          flexDirection: 'column',
-          background: HQ.SURFACE,
-          border: `1px solid ${HQ.LINE}`,
-          borderRadius: 18,
-          overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
-        }}
+        className="halaqa flex flex-col w-full max-w-6xl mx-auto h-[calc(100dvh-170px)] sm:h-[calc(100dvh-150px)] lg:h-[calc(100dvh-130px)] rounded-2xl sm:rounded-3xl overflow-hidden border border-[#E8E2D4] bg-white shadow-sm"
       >
         {/* Top Bar */}
-        <div
-          style={{
-            padding: '14px 20px',
-            borderBottom: `1px solid ${HQ.LINE}`,
-            background: HQ.SURFACE,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="bg-white border-b border-[#E8E2D4] px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 flex-none">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <span
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: HQ.MENTOR_WASH,
-                border: `1px solid ${HQ.MENTOR}33`,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flex: 'none',
-              }}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#E2EFE7] border border-[#177B58]/20 flex items-center justify-center flex-none text-[#177B58]"
             >
-              <MessageSquare size={20} color={HQ.MENTOR} />
+              <MessageSquare className="w-5 h-5" />
             </span>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h1 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: HQ.INK }}>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-black text-[#2A2438] truncate">
                   رسائل ومناقشات الطلاب
                 </h1>
                 {totalUnread > 0 && (
-                  <HqBadge tone="danger">
-                    {totalUnread} رسائل غير مقروءة
-                  </HqBadge>
+                  <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                    {totalUnread} غير مقروء
+                  </span>
                 )}
               </div>
-              <p style={{ margin: '2px 0 0', fontSize: 12, color: HQ.MUTED }}>
+              <p className="hidden sm:block text-xs text-[#756E85] mt-0.5 truncate">
                 تواصل مباشر ودعم فوري فردي مع كل طالب في المنصة بدون وسطاء
               </p>
             </div>
@@ -187,35 +155,21 @@ export default function AdminDiscussionsPage() {
               if (selectedStudentId) loadStudentChat(selectedStudentId, false);
             }}
             title="تحديث"
-            className="hq-action"
-            style={{
-              background: HQ.PAPER,
-              border: `1px solid ${HQ.LINE}`,
-              color: HQ.INK,
-              padding: '0 12px',
-              height: 36,
-              fontSize: 13,
-            }}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-[#FBF7EE] hover:bg-white border border-[#E8E2D4] text-[#2A2438] text-xs sm:text-sm font-bold transition-colors flex-none"
           >
-            <RotateCcw size={14} /> <span className="m-hide-sm">تحديث</span>
+            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">تحديث</span>
           </button>
         </div>
 
         {/* Main 2-Column Content */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div className="flex-1 flex overflow-hidden min-h-0">
           
           {/* Column 1: Conversations List */}
           <div
-            style={{
-              width: window.innerWidth < 768 && mobileView === 'chat' ? 0 : '340px',
-              minWidth: window.innerWidth < 768 && mobileView === 'chat' ? 0 : '300px',
-              maxWidth: '380px',
-              borderLeft: `1px solid ${HQ.LINE}`,
-              display: window.innerWidth < 768 && mobileView === 'chat' ? 'none' : 'flex',
-              flexDirection: 'column',
-              background: HQ.PAPER,
-              overflow: 'hidden',
-            }}
+            className={`w-full md:w-80 md:min-w-[280px] lg:w-96 flex flex-col bg-white border-l border-[#E8E2D4] overflow-hidden ${
+              mobileView === 'chat' ? 'hidden md:flex' : 'flex'
+            }`}
           >
             {/* Search Box */}
             <div style={{ padding: '12px', borderBottom: `1px solid ${HQ.LINE}` }}>
@@ -326,13 +280,9 @@ export default function AdminDiscussionsPage() {
 
           {/* Column 2: Chat View */}
           <div
-            style={{
-              flex: 1,
-              display: window.innerWidth < 768 && mobileView === 'list' ? 'none' : 'flex',
-              flexDirection: 'column',
-              background: HQ.SURFACE,
-              overflow: 'hidden',
-            }}
+            className={`flex-1 flex flex-col bg-[#FBF7EE] overflow-hidden ${
+              mobileView === 'list' ? 'hidden md:flex' : 'flex'
+            }`}
           >
             {selectedStudentId && currentStudent ? (
               <>
@@ -450,14 +400,7 @@ export default function AdminDiscussionsPage() {
                 {/* Reply Bar */}
                 <form
                   onSubmit={handleSendReply}
-                  style={{
-                    padding: '12px 16px',
-                    background: HQ.SURFACE,
-                    borderTop: `1px solid ${HQ.LINE}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                  }}
+                  className="bg-white border-t border-[#E8E2D4] p-2.5 sm:p-3.5 flex items-center gap-2 flex-none"
                 >
                   <input
                     ref={inputRef}
@@ -467,40 +410,24 @@ export default function AdminDiscussionsPage() {
                     onKeyDown={handleKeyDown}
                     placeholder={`اكتب ردك للطالب ${currentStudent.firstName}...`}
                     disabled={isSending}
-                    style={{
-                      flex: 1,
-                      background: HQ.PAPER,
-                      border: `1px solid ${HQ.LINE}`,
-                      borderRadius: 10,
-                      padding: '10px 14px',
-                      fontSize: 13,
-                      color: HQ.INK,
-                      outline: 'none',
-                      fontFamily: 'inherit',
-                    }}
+                    className="flex-1 bg-[#FBF7EE] border border-[#E8E2D4] focus:border-[#177B58] focus:bg-white rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm text-[#2A2438] outline-none transition-all placeholder:text-[#756E85]"
                   />
 
                   <button
                     type="submit"
                     disabled={!replyText.trim() || isSending}
-                    className="hq-action"
-                    style={{
-                      background: replyText.trim() ? HQ.MENTOR : HQ.MUTED,
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: 10,
-                      padding: '0 18px',
-                      height: 40,
-                      fontSize: 13,
-                      cursor: replyText.trim() && !isSending ? 'pointer' : 'default',
-                      opacity: replyText.trim() && !isSending ? 1 : 0.6,
-                    }}
+                    className={`flex-none h-10 px-3.5 sm:px-5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all text-white ${
+                      replyText.trim() && !isSending
+                        ? 'bg-[#177B58] hover:bg-[#0F5940] shadow-sm cursor-pointer'
+                        : 'bg-gray-300 opacity-60 cursor-default'
+                    }`}
                   >
                     {isSending ? (
-                      <Loader2 size={16} className="animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <>
-                        <Send size={15} /> <span>إرسال الرد</span>
+                        <Send className="w-4 h-4" />
+                        <span className="hidden sm:inline">إرسال الرد</span>
                       </>
                     )}
                   </button>

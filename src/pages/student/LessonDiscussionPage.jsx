@@ -149,7 +149,7 @@ export default function LessonDiscussionPage() {
 
   return (
     <PageLayout>
-      <div className="halaqa" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100dvh - 10rem)', maxWidth: 760, margin: '0 auto' }}>
+      <div className="halaqa flex flex-col w-full max-w-3xl mx-auto h-[calc(100dvh-170px)] sm:h-[calc(100dvh-150px)] lg:h-[calc(100dvh-130px)]">
         {/* Header */}
         <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: '12px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flex: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
