@@ -19,9 +19,12 @@ const WEEK_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثا
 /* قسم بانتظار تحديد المستوى والجدولة — فقط الطلاب الذين لم يُحدد
    مستواهم أو مواعيدهم أو اعتمادهم بعد، مع كل أدوات الحسم في مكان واحد. */
 
-const isWaiting = (u) =>
-  u.role === 'student' &&
-  (u.isApproved === false || !u.assignedLevel || !(u.scheduleDays?.length));
+const isWaiting = (u) => {
+  if (u.role !== 'student') return false;
+  // إذا حجز الطالب أيامه ووقته بالفعل، فهو مجدول ونشط وليس بانتظار الجدولة
+  if (u.scheduleDays?.length && u.sessionTime) return false;
+  return !u.assignedLevel || !u.scheduleDays?.length;
+};
 
 export default function PendingLevelPage() {
   const navigate = useNavigate();
