@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, X, Radio, FileText, ClipboardList, Users, BookOpen, MessageCircle, CreditCard, Clock } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, Radio, FileText, ClipboardList, Users, BookOpen, MessageCircle, CreditCard, Clock, BellRing, Sparkles, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import useNotificationStore from '../../store/notificationStore';
 import useAuthStore from '../../store/authStore';
+import api from '../../services/api';
 import { timeAgoAr } from '../../utils/helpers';
+import { enableWebPush, isWebPushSupported, getPushPermissionState } from '../../utils/webPush';
 import '../../components/halaqa/halaqa.css';
 import { HQ } from '../../components/halaqa/primitives';
 
@@ -28,6 +31,9 @@ const TYPE_ICON = {
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState(() => getPushPermissionState());
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
+  const [isTestingPush, setIsTestingPush] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -35,7 +41,42 @@ export default function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
+    setPushStatus(getPushPermissionState());
   }, []);
+
+  const handleEnablePush = async () => {
+    if (!isWebPushSupported()) {
+      toast.error('المتصفح أو الاتصال الحالي لا يدعم Web Push (يتطلب HTTPS أو Localhost)');
+      return;
+    }
+    setIsEnablingPush(true);
+    try {
+      const res = await enableWebPush();
+      setPushStatus(res);
+      if (res === 'granted') {
+        toast.success('تم تفعيل إشعارات المتصفح بنجاح! ستصلك التنبيهات حتى والموقع مغلق 🔔');
+      } else if (res === 'denied') {
+        toast.error('تم رفض الإذن. يمكنك السماح به يدوياً من إعدادات المتصفح.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'تعذر تفعيل إشعارات المتصفح');
+    } finally {
+      setIsEnablingPush(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setIsTestingPush(true);
+    try {
+      const res = await api.post('/notifications/test-push');
+      toast.success(res.data?.message || 'تم إرسال إشعار تجريبي للمتصفح!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'تعذر إرسال الإشعار التجريبي');
+    } finally {
+      setIsTestingPush(false);
+    }
+  };
+
 
   useEffect(() => {
     const handler = (e) => {
@@ -143,6 +184,52 @@ export default function NotificationBell() {
                 </button>
               </div>
             </div>
+
+            {/* Web Push Banner */}
+            {isWebPushSupported() && pushStatus !== 'granted' && pushStatus !== 'denied' && (
+              <div className="px-3.5 py-2.5 mx-3 mt-2.5 mb-1 rounded-xl flex items-center justify-between gap-2.5" style={{ background: '#F4F9F5', border: '1px solid #D1E7DD' }}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span style={{ color: HQ.MENTOR, display: 'inline-flex' }}><BellRing size={16} /></span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate" style={{ color: HQ.INK, margin: 0 }}>تفعيل إشعارات المتصفح</p>
+                    <p className="text-[11px] truncate" style={{ color: HQ.MUTED, margin: 0 }}>لتصلك التنبيهات حتى والموقع مغلق</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEnablePush}
+                  disabled={isEnablingPush}
+                  className="text-xs px-2.5 py-1.5 rounded-lg font-bold text-white transition-opacity"
+                  style={{ background: HQ.MENTOR, border: 'none', cursor: isEnablingPush ? 'default' : 'pointer', opacity: isEnablingPush ? 0.7 : 1, flexShrink: 0 }}
+                >
+                  {isEnablingPush ? 'جارٍ...' : 'تفعيل'}
+                </button>
+              </div>
+            )}
+
+            {isWebPushSupported() && pushStatus === 'granted' && (
+              <div className="px-3 py-1.5 mx-3 mt-2 mb-1 rounded-lg flex items-center justify-between" style={{ background: '#F8F9FA', border: `1px solid ${HQ.LINE}` }}>
+                <span className="text-[11px] flex items-center gap-1 font-medium" style={{ color: HQ.MENTOR }}>
+                  <Check size={13} />
+                  إشعارات المتصفح مفعّلة
+                </span>
+                <button
+                  type="button"
+                  onClick={handleTestPush}
+                  disabled={isTestingPush}
+                  className="text-[11px] font-bold px-2 py-0.5 rounded transition-opacity"
+                  style={{ color: HQ.INK, background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, cursor: isTestingPush ? 'default' : 'pointer' }}
+                >
+                  {isTestingPush ? 'جارٍ...' : 'تجربة إشعار 🚀'}
+                </button>
+              </div>
+            )}
+
+            {pushStatus === 'denied' && (
+              <div className="px-3 py-1.5 mx-3 mt-2 mb-1 rounded-lg text-[11px] text-amber-800 bg-amber-50 border border-amber-200">
+                ⚠️ إشعارات المتصفح محظورة. يمكنك السماح بها من إعدادات المتصفح.
+              </div>
+            )}
 
             {/* Notifications list */}
             <div className="overflow-y-auto" style={{ maxHeight: 320 }}>

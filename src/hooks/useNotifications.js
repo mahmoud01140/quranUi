@@ -5,6 +5,8 @@ import usePolling from './usePolling';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
+import { syncPushSubscription } from '../utils/webPush';
+
 const POLL_MS = 30000;
 const DUE_POLL_MS = 60000;
 
@@ -23,8 +25,10 @@ export default function useNotifications() {
   // Initial load once
   useEffect(() => {
     fetchNotifications().catch(() => {});
+    syncPushSubscription().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   usePolling(async () => {
     try {

@@ -1,6 +1,14 @@
 /* Service Worker لمنصة التحفيظ — يستقبل Web Push حتى والموقع مغلق.
    يُسجَّل من main.jsx — لا منطق عمل هنا، عرض الإشعار وفتح الرابط فقط. */
 
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener('push', (event) => {
   let payload = {};
   try {
