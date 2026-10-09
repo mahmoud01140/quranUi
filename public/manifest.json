@@ -1,0 +1,40 @@
+{
+  "id": "/",
+  "name": "منصة تحفيظ القرآن الكريم",
+  "short_name": "تحفيظ القرآن",
+  "description": "منصة تحفيظ القرآن الكريم - تعلم القرآن وأحكام التجويد مع معلمين متخصصين عبر الإنترنت",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FBF7EE",
+  "theme_color": "#1D9E75",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": ["education", "books", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/quran-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
