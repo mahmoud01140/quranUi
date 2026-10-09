@@ -6,6 +6,14 @@ import App from './App.jsx';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import './index.css';
 
+// تسجيل Service Worker مبكراً لاستقبال Web Push حتى والموقع مغلق.
+// التسجيل وحده لا يطلب إذناً ولا يشترك — الاشتراك يتم عند ضغط المستخدم زر التفعيل.
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>

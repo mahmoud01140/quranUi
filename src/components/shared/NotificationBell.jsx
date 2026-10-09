@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Check, CheckCheck, Trash2, X, Radio, FileText, ClipboardList, Users, BookOpen, MessageCircle } from 'lucide-react';
+import { Bell, Check, CheckCheck, Trash2, X, Radio, FileText, ClipboardList, Users, BookOpen, MessageCircle, CreditCard, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import useNotificationStore from '../../store/notificationStore';
@@ -18,6 +18,11 @@ const TYPE_ICON = {
   group_assigned: Users,
   plan_updated: BookOpen,
   message: MessageCircle,
+  discussion_reply: MessageCircle,
+  payment_submitted: CreditCard,
+  payment_approved: CreditCard,
+  payment_rejected: CreditCard,
+  session_due: Clock,
   general: Bell,
 };
 

@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react';
 import useNotificationStore from '../store/notificationStore';
+import useAuthStore from '../store/authStore';
 import usePolling from './usePolling';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const POLL_MS = 30000;
+const DUE_POLL_MS = 60000;
 
 /**
  * useNotifications — Vercel-safe polling replacement for socket.io push.
@@ -52,4 +54,24 @@ export default function useNotifications() {
       }
     } catch (_) {}
   }, POLL_MS);
+
+  // Staff only: due-session alerts (~every 60s). The backend notifies once per
+  // session (dueNotifiedAt flag) via DB + Web Push; here we toast immediately
+  // and pre-mark the created notification ids as seen so the 30s poll above
+  // doesn't toast them a second time.
+  usePolling(async () => {
+    try {
+      const role = useAuthStore.getState()?.user?.role;
+      if (role !== 'admin' && role !== 'teacher') return;
+      const res = await api.get('/live/due');
+      const sessions = res.data?.sessions || [];
+      (res.data?.notifiedIds || []).forEach((id) => seenRef.current.add(String(id)));
+      sessions.forEach((s) => {
+        toast(`⏰ حان موعد حصة: ${s.title || 'جلسة مباشرة'}${s.ownerName ? ` — ${s.ownerName}` : ''}`, {
+          icon: '⏰',
+          duration: 10000,
+        });
+      });
+    } catch (_) {}
+  }, DUE_POLL_MS);
 }

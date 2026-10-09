@@ -103,25 +103,22 @@ export default function WaitingApprovalPage() {
   };
 
   const handleEnablePush = async () => {
-    if (typeof window === 'undefined' || !('Notification' in window)) {
+    // اشتراك Web Push حقيقي (كان يخزن كائناً وهمياً لا يصلح للإرسال)
+    const { enableWebPush, isWebPushSupported } = await import('../../utils/webPush');
+    if (!isWebPushSupported()) {
       toast.error('المتصفح لا يدعم الإشعارات الفورية');
       return;
     }
     try {
-      const perm = await Notification.requestPermission();
-      setPushStatus(perm);
-      if (perm === 'granted') {
-        toast.success('تم تفعيل إشعارات المتصفح بنجاح! سننبهك فور اعتمادك.');
-        try {
-          await api.put('/auth/push-subscription', {
-            subscription: { browserEnabled: true, timestamp: new Date() },
-          });
-        } catch (_) {}
-      } else {
+      const status = await enableWebPush();
+      setPushStatus(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : pushStatus);
+      if (status === 'granted') {
+        toast.success('تم تفعيل إشعارات المتصفح بنجاح! ستصلك التنبيهات حتى والموقع مغلق.');
+      } else if (status === 'denied') {
         toast.error('تم رفض الإشعارات في المتصفح');
       }
     } catch (_) {
-      toast.error('تعذر تفعيل الإشعارات');
+      toast.error('تعذر تفعيل الإشعارات — تحقق من الاتصال وحاول مجدداً');
     }
   };
 
