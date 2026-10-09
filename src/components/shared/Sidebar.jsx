@@ -4,7 +4,7 @@ import {
   BarChart2, Settings, BookMarked, ClipboardList,
   UserCheck, Book, TrendingUp, ChevronLeft, Sparkles,
   CalendarCheck, FolderOpen, Flame, CreditCard,
-  Volume2, MessageSquare,
+  Volume2, MessageSquare, Bell,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
@@ -44,6 +44,7 @@ const adminLinks = [
   { section: 'النظام' },
   { to: '/admin/resources', icon: FolderOpen, label: 'المكتبة التعليمية' },
   { to: '/admin/onboarding-settings', icon: Settings, label: 'إعدادات تحديد المستوى' },
+  { to: '/admin/notifications', icon: Bell, label: 'مفتاح التنبيهات' },
 ];
 
 const parentLinks = [
