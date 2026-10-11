@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { motion, MotionConfig } from 'framer-motion';
 import {
-  BookOpen, Users, Video, Mic, Hand, ClipboardList, BarChart3,
+  BookOpen, Video, Mic, ClipboardList, BarChart3,
   Star, Flag, Award, BookmarkCheck, CalendarCheck,
   ChevronDown, ChevronLeft, LogIn, UserPlus, Route, ArrowLeft,
-  LayoutDashboard,
+  LayoutDashboard, MapPin,
 } from 'lucide-react';
 import Navbar from '../components/shared/Navbar';
 import useAuthStore from '../store/authStore';
@@ -32,7 +32,7 @@ const journeySteps = [
   { title: 'المستوى', proof: 'منهج مناسب لمستواك وهدفك.' },
   { title: 'الحلقة', proof: 'جلسة فردية مباشرة 1-1 مع معلّم يتابعك.' },
   { title: 'الدرس', proof: 'دروس متدرجة في الحفظ والتجويد.' },
-  { title: 'المجلس الحي', proof: 'تسميع مباشر أمام المعلّم.' },
+  { title: 'الحصة الفردية', proof: 'تسميع مباشر لمعلّمك الخاص وحده.' },
   { title: 'المتابعة', proof: 'اختبارات وتقدّم يومي.' },
   { title: 'الختمة', proof: 'إتمام الحفظ ومراجعة متقنة.' },
 ];
@@ -40,7 +40,7 @@ const journeySteps = [
 const benefits = [
   { icon: BookmarkCheck, title: 'متابعة الحفظ', desc: 'ورد يومي من الحفظ الجديد والمراجعة.' },
   { icon: BookOpen, title: 'الدروس', desc: 'منهج متدرج حسب مستواك.' },
-  { icon: Video, title: 'المجلس الحي', desc: 'تسميع مباشر مع معلّمك الخاص.' },
+  { icon: Video, title: 'الحصة الفردية', desc: 'لقاء مرئي خاص وتسميع مباشر مع معلّمك.' },
   { icon: ClipboardList, title: 'الاختبارات', desc: 'تدريب مستمر وقياس لمستواك.' },
   { icon: BarChart3, title: 'متابعة التقدم', desc: 'تعرف أين وصلت وما خطوتك التالية.' },
   { icon: Star, title: 'تقييم المعلّم', desc: 'ملاحظات على تلاوتك وتجويدك.' },
@@ -49,12 +49,12 @@ const benefits = [
 ];
 
 const liveRoles = [
-  { icon: Users, tone: 'guide', title: 'المعلّم', desc: 'يدير المجلس، يستمع للتسميع ويقيّم.' },
-  { icon: Mic, tone: 'mentor', title: 'الطالب الذي يقرأ', desc: 'يُسمّع ورده ويتلقى ملاحظات المعلّم.' },
-  { icon: Hand, tone: 'mentor', title: 'دورك في الانتظار', desc: 'تعرف ترتيبك في الطابور وتستعد لدورك.' },
-  { icon: CalendarCheck, tone: 'mentor', title: 'الحضور', desc: 'يُسجَّل حضورك في كل مجلس.' },
-  { icon: BookOpen, tone: 'mentor', title: 'الورد', desc: 'حفظك ومراجعتك واضحة قبل المجلس.' },
-  { icon: BarChart3, tone: 'mentor', title: 'المتابعة', desc: 'درجتك وملاحظات المعلّم بعد كل تسميع.' },
+  { icon: Video, tone: 'guide', title: 'لقاء مرئي خاص', desc: 'حصة فردية 1-1 تجمعك بمعلّمك وحده في موعدك.' },
+  { icon: Mic, tone: 'mentor', title: 'تسميع مباشر', desc: 'تُسمّع وردك لمعلّمك ويصحح تلاوتك فوراً.' },
+  { icon: BookOpen, tone: 'mentor', title: 'المصحف المشترك', desc: 'المعلّم يشارك الآيات فتظهر أمامك أثناء الحصة.' },
+  { icon: BookmarkCheck, tone: 'mentor', title: 'وردّك أمامك', desc: 'حفظك ومراجعتك ظاهرة، والمعلّم قد يحدّثها أثناء الحصة.' },
+  { icon: CalendarCheck, tone: 'mentor', title: 'الحضور', desc: 'يُسجَّل حضورك بنداء المعلّم في كل حصة.' },
+  { icon: BarChart3, tone: 'mentor', title: 'التقييم', desc: 'درجتك وملاحظات المعلّم بعد كل حصة.' },
 ];
 
 const pathPoints = [
@@ -179,11 +179,11 @@ export default function LandingPage() {
                 </div>
               </FadeIn>
 
-              {/* العنصر البصري الوحيد: لمحة عن مجلس الحلقة */}
-              <FadeIn delay={0.1}>
+                {/* العنصر البصري الوحيد: لمحة عن الحصة الفردية */}
+                <FadeIn delay={0.1}>
                 <div
                   role="img"
-                  aria-label="لمحة توضيحية عن مجلس الحلقة: آية قرآنية، ثم المعلّم والقارئ والمنتظر"
+                  aria-label="لمحة توضيحية عن الحصة الفردية: آية قرآنية، ثم المعلّم وأنت والمصحف المشترك"
                   style={{ background: SURFACE, border: `1px solid ${LINE}`, borderRadius: 18, padding: 24 }}
                 >
                   <p className="hq-quran" style={{ margin: 0, fontSize: 24, textAlign: 'center' }}>
@@ -192,26 +192,26 @@ export default function LandingPage() {
                   <div style={{ height: 1, background: LINE, margin: '16px 0' }} aria-hidden />
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                     <li style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
-                      <Chip icon={Users} tone="guide" />
+                      <Chip icon={Video} tone="guide" />
                       <span style={{ flex: 1 }}>
                         <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>المعلّم</span>
-                        <span style={{ display: 'block', fontSize: 13, color: MUTED }}>يدير المجلس ويقيّم التسميع</span>
+                        <span style={{ display: 'block', fontSize: 13, color: MUTED }}>معك وحدك في لقاء خاص ويقيّم تسميعك</span>
                       </span>
                       <HqBadge tone="guide">المعلّم</HqBadge>
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${LINE}` }}>
                       <Chip icon={Mic} tone="mentor" />
                       <span style={{ flex: 1 }}>
-                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>القارئ الآن</span>
-                        <span style={{ display: 'block', fontSize: 13, color: MUTED }}>يُسمّع ورده أمام الحلقة</span>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>أنت</span>
+                        <span style={{ display: 'block', fontSize: 13, color: MUTED }}>تُسمّع وردك مباشرة لمعلّمك</span>
                       </span>
-                      <HqBadge tone="mentor">يُسمّع الآن</HqBadge>
+                      <HqBadge tone="mentor">تُسمّع الآن</HqBadge>
                     </li>
                     <li style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: `1px solid ${LINE}` }}>
-                      <Chip icon={Hand} tone="mentor" />
+                      <Chip icon={BookOpen} tone="mentor" />
                       <span style={{ flex: 1 }}>
-                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>بقية الطلاب</span>
-                        <span style={{ display: 'block', fontSize: 13, color: MUTED }}>يستمعون ويستعدون لأدوارهم</span>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>وردّك وتقييمك</span>
+                        <span style={{ display: 'block', fontSize: 13, color: MUTED }}>يظهران لك أثناء الحصة وبعدها</span>
                       </span>
                     </li>
                   </ul>
@@ -301,14 +301,14 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ─── 4. الحلقة والمجلس الحي ──────────────────────────── */}
+        {/* ─── 4. الحصة المباشرة الفردية ─────────────────────── */}
         <section aria-labelledby="live-title" id="live" style={{ padding: '48px 0', scrollMarginTop: 72 }}>
           <div style={{ maxWidth: 1152, margin: '0 auto', padding: '0 16px' }}>
             <FadeIn>
               <SectionHead
                 badge="التجربة الحيّة"
-                title="الحلقة والمجلس الحي"
-                sub="معلّم حقيقي، وطابور تسميع واضح، ومتابعة لكل طالب."
+                title="الحصة المباشرة الفردية"
+                sub="لقاء مرئي خاص يجمعك بمعلّمك وحده: تسميع، مصحف مشترك، وتقييم فوري."
                 id="live-title"
               />
             </FadeIn>
@@ -345,46 +345,49 @@ export default function LandingPage() {
               <FadeIn delay={0.1}>
                 <div
                   role="img"
-                  aria-label="مثال توضيحي لطابور التسميع: القارئ الآن، ثم التالي، ثم المعلّم، مع الحضور والورد"
+                  aria-label="مثال توضيحي للحصة الفردية: المعلّم متصل، وأنت تُسمّع الآن، والمصحف المشترك يعرض الآيات"
                   style={{ background: SURFACE, border: `1px solid ${LINE}`, borderRadius: 18, padding: 16 }}
                 >
-                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: MUTED }}>مثال توضيحي لطابور التسميع</p>
+                  <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: MUTED }}>مثال توضيحي للحصة الفردية</p>
                   <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                     <li style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 4px', borderBottom: `1px solid ${LINE}` }}>
-                      <span aria-hidden style={{ flex: 'none', width: 32, height: 32, borderRadius: 9999, background: MENTOR, color: '#fff', border: `1px solid ${MENTOR}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>1</span>
-                      <span style={{ flex: 1 }}>
-                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>القارئ الآن</span>
-                        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MENTOR }}>يُسمّع الآن</span>
-                      </span>
-                      <Mic size={17} color={MENTOR} aria-hidden />
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 4px', borderBottom: `1px solid ${LINE}` }}>
-                      <span aria-hidden style={{ flex: 'none', width: 32, height: 32, borderRadius: 9999, background: PAPER, color: MUTED, border: `1px solid ${LINE}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>2</span>
-                      <span style={{ flex: 1 }}>
-                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>التالي في الدور</span>
-                        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MUTED }}>يستعد للتسميع</span>
-                      </span>
-                      <Hand size={17} color={MUTED} aria-hidden />
-                    </li>
-                    <li style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 4px' }}>
                       <span aria-hidden style={{ flex: 'none', width: 32, height: 32, borderRadius: 9999, background: GUIDE_WASH, color: GUIDE, border: `1px solid ${GUIDE_WASH}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>
-                        <Users size={16} />
+                        <Video size={16} />
                       </span>
                       <span style={{ flex: 1 }}>
                         <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>المعلّم</span>
-                        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MUTED }}>يستمع ويقيّم</span>
+                        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MUTED }}>متصل معك في لقاء خاص</span>
                       </span>
                       <HqBadge tone="guide">المعلّم</HqBadge>
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 4px', borderBottom: `1px solid ${LINE}` }}>
+                      <span aria-hidden style={{ flex: 'none', width: 32, height: 32, borderRadius: 9999, background: MENTOR, color: '#fff', border: `1px solid ${MENTOR}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>
+                        <Mic size={16} />
+                      </span>
+                      <span style={{ flex: 1 }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>أنت</span>
+                        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MENTOR }}>تُسمّع وردك الآن</span>
+                      </span>
+                      <HqBadge tone="mentor">تُسمّع الآن</HqBadge>
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 56, padding: '10px 4px' }}>
+                      <span aria-hidden style={{ flex: 'none', width: 32, height: 32, borderRadius: 9999, background: PAPER, color: MUTED, border: `1px solid ${LINE}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>
+                        <BookOpen size={16} />
+                      </span>
+                      <span style={{ flex: 1 }}>
+                        <span style={{ display: 'block', fontWeight: 800, fontSize: 15, color: INK }}>المصحف المشترك</span>
+                        <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: MUTED }}>الآيات التي يشاركها معلّمك</span>
+                      </span>
                     </li>
                   </ol>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 9999, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: INK }}>
                       <CalendarCheck size={15} color={MENTOR} aria-hidden />
-                      الحضور يُسجَّل في كل مجلس
+                      الحضور يُسجَّل في كل حصة
                     </span>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: PAPER, border: `1px solid ${LINE}`, borderRadius: 9999, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: INK }}>
                       <BookOpen size={15} color={MENTOR} aria-hidden />
-                      الورد واضح قبل المجلس
+                      وردّك واضح أثناء الحصة
                     </span>
                   </div>
                 </div>
@@ -431,7 +434,56 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ─── 6. CTA نهائي ───────────────────────────────────── */}
+        {/* ─── 6. الشيخ ───────────────────────────────────────── */}
+        <section aria-labelledby="sheikh-title" id="sheikh" style={{ padding: '48px 0', scrollMarginTop: 72 }}>
+          <div style={{ maxWidth: 768, margin: '0 auto', padding: '0 16px' }}>
+            <FadeIn>
+              <SectionHead
+                badge="معلّمك"
+                title="الشيخ ابوزيد جمال"
+                id="sheikh-title"
+              />
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <div style={{
+                background: SURFACE, border: `1px solid ${LINE}`, borderRadius: 18,
+                padding: 24, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap',
+              }}>
+                <img
+                  src="/sheikh.jpg"
+                  alt="الشيخ ابوزيد جمال"
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  style={{
+                    width: 140, height: 140, borderRadius: 9999, objectFit: 'cover', flex: 'none',
+                    border: `3px solid ${MENTOR_WASH}`, outline: `2px solid ${MENTOR}`,
+                  }}
+                />
+                <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 900, color: INK }}>
+                    الشيخ ابوزيد جمال
+                  </h3>
+                  <p style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 700, color: MUTED, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MapPin size={15} color={MENTOR} aria-hidden />
+                    دلهانس – الفشن – بني سويف
+                  </p>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: INK }}>
+                      <Chip icon={Video} tone="mentor" />
+                      <span>يحفّظك في <strong>حصة فردية مباشرة</strong> ويتابع تسميعك بنفسه.</span>
+                    </li>
+                    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: INK }}>
+                      <Chip icon={BookOpen} tone="mentor" />
+                      <span>يشاركك <strong>المصحف والورد</strong> أثناء الحصة ويقيّم حفظك بعدها.</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+
+        {/* ─── 7. CTA نهائي ───────────────────────────────────── */}
         <section aria-labelledby="cta-title" style={{ padding: '48px 0 64px' }}>
           <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 16px', textAlign: 'center' }}>
             <FadeIn>

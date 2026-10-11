@@ -79,7 +79,8 @@ export default function Navbar({ onMenuClick }) {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-[#756E85]">
             <a href="#journey" className="hover:text-[#177B58] transition-colors relative nav-link-hover">كيف تسير الرحلة</a>
             <a href="#benefits" className="hover:text-[#177B58] transition-colors relative nav-link-hover">ماذا يحصل عليه الطالب</a>
-            <a href="#live" className="hover:text-[#177B58] transition-colors relative nav-link-hover">المجلس الحي</a>
+            <a href="#live" className="hover:text-[#177B58] transition-colors relative nav-link-hover">الحصة المباشرة</a>
+            <a href="#sheikh" className="hover:text-[#177B58] transition-colors relative nav-link-hover">الشيخ</a>
           </div>
         )}
 
@@ -198,7 +199,8 @@ export default function Navbar({ onMenuClick }) {
         >
           <a href="#journey" onClick={() => setMenuOpen(false)} className="text-[#2A2438] font-semibold hover:text-[#177B58] transition-colors py-1">كيف تسير الرحلة</a>
           <a href="#benefits" onClick={() => setMenuOpen(false)} className="text-[#2A2438] font-semibold hover:text-[#177B58] transition-colors py-1">ماذا يحصل عليه الطالب</a>
-          <a href="#live" onClick={() => setMenuOpen(false)} className="text-[#2A2438] font-semibold hover:text-[#177B58] transition-colors py-1">المجلس الحي</a>
+          <a href="#live" onClick={() => setMenuOpen(false)} className="text-[#2A2438] font-semibold hover:text-[#177B58] transition-colors py-1">الحصة المباشرة</a>
+          <a href="#sheikh" onClick={() => setMenuOpen(false)} className="text-[#2A2438] font-semibold hover:text-[#177B58] transition-colors py-1">الشيخ</a>
           <Link to="/login" onClick={() => setMenuOpen(false)} className="text-[#2A2438] font-semibold hover:text-[#177B58] transition-colors py-1 sm:hidden">تسجيل الدخول</Link>
         </motion.div>
       )}
