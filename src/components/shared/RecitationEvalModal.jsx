@@ -45,7 +45,7 @@ export default function RecitationEvalModal({ open, studentId, studentName, onCl
           setNotes(t.teacherNotes || '');
         }
       })
-      .catch(() => toast.error('تعذر جلب ورد اليوم'))
+      .catch(() => toast.error('تعذّر جلب ورد اليوم'))
       .finally(() => setLoading(false));
   }, [open, studentId]);
 

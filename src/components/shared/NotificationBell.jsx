@@ -59,7 +59,7 @@ export default function NotificationBell() {
         toast.error('تم رفض الإذن. يمكنك السماح به يدوياً من إعدادات المتصفح.');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'تعذر تفعيل إشعارات المتصفح');
+      toast.error(err.response?.data?.message || err.message || 'تعذّر تفعيل إشعارات المتصفح');
     } finally {
       setIsEnablingPush(false);
     }
@@ -71,7 +71,7 @@ export default function NotificationBell() {
       const res = await api.post('/notifications/test-push');
       toast.success(res.data?.message || 'تم إرسال إشعار تجريبي للمتصفح!');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'تعذر إرسال الإشعار التجريبي');
+      toast.error(err.response?.data?.message || 'تعذّر إرسال الإشعار التجريبي');
     } finally {
       setIsTestingPush(false);
     }

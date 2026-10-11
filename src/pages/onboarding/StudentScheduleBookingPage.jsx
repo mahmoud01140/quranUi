@@ -61,7 +61,7 @@ export default function StudentScheduleBookingPage() {
       }
     } catch (err) {
       console.error('Error fetching settings:', err);
-      toast.error('تعذر جلب إعدادات المواعيد');
+      toast.error('تعذّر جلب إعدادات المواعيد');
     } finally {
       setLoading(false);
     }
@@ -126,7 +126,7 @@ export default function StudentScheduleBookingPage() {
         toast.success('تم حجز وتثبيت جدولك بنجاح! 🎉');
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || 'تعذر حجز الموعد. يرجى تجربة موعد آخر.';
+      const msg = err?.response?.data?.message || 'تعذّر حجز الموعد. يرجى تجربة موعد آخر.';
       toast.error(msg);
       // Re-fetch slots in case the selected slot was taken
       fetchSlotsForDay(inspectDay);
@@ -143,6 +143,9 @@ export default function StudentScheduleBookingPage() {
     const h12 = h % 12 || 12;
     return `${h12}:${String(m).padStart(2, '0')} ${period}`;
   };
+
+  // تقدم صادق يعكس حالة النموذج (بنفس نمط خطوات التسجيل الخمس)
+  const bookingProgress = bookingSuccess ? 100 : selectedTime ? 80 : selectedDays.length > 0 ? 45 : 15;
 
   if (loading) {
     return (
@@ -176,6 +179,9 @@ export default function StudentScheduleBookingPage() {
                 <p className="text-sm sm:text-base text-[#756E85] max-w-lg mx-auto">
                   تم تحديد مستواك بنجاح! اختر الآن أيام دراستك والوقت الذي يناسبك من الفترات المتاحة بدون أي تداخل.
                 </p>
+                <div className="onb-progress max-w-lg mx-auto" role="progressbar" aria-valuenow={bookingProgress} aria-valuemin={0} aria-valuemax={100} aria-label="تقدم تثبيت الجدول">
+                  <span style={{ width: `${bookingProgress}%` }} />
+                </div>
               </div>
 
               {/* Step 1: Select Days */}

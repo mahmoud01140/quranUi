@@ -93,7 +93,7 @@ function RecitationRecorder({ questionIndex, questionId, onSaved }) {
               aria-label="مدة التسجيل"
             >
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#C2410C' }} aria-hidden />
-              {formatCountdown(duration)}
+              <span dir="ltr">{formatCountdown(duration)}</span>
             </div>
           )}
 

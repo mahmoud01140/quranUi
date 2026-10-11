@@ -16,15 +16,11 @@ import { HQ, HqAvatar, HqBadge } from '../../components/halaqa/primitives';
 
 const WEEK_DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
-/* قسم بانتظار تحديد المستوى والجدولة — فقط الطلاب الذين لم يُحدد
-   مستواهم أو مواعيدهم أو اعتمادهم بعد، مع كل أدوات الحسم في مكان واحد. */
+/* قسم الطلاب الجدد — فقط الطلاب الذين لم يُحدد مستواهم بعد
+   (بغض النظر عن الجدولة — الطالب يحجز جدوله بنفسه)، مع كل أدوات الحسم في مكان واحد. */
 
-const isWaiting = (u) => {
-  if (u.role !== 'student') return false;
-  // إذا حجز الطالب أيامه ووقته بالفعل، فهو مجدول ونشط وليس بانتظار الجدولة
-  if (u.scheduleDays?.length && u.sessionTime) return false;
-  return !u.assignedLevel || !u.scheduleDays?.length;
-};
+const isWaiting = (u) =>
+  u.role === 'student' && !u.assignedLevel;
 
 export default function PendingLevelPage() {
   const navigate = useNavigate();
@@ -69,9 +65,7 @@ export default function PendingLevelPage() {
 
   const missingOf = (u) => {
     const m = [];
-    if (u.isApproved === false) m.push('بانتظار الاعتماد');
-    if (!u.assignedLevel) m.push('بدون مستوى');
-    if (!(u.scheduleDays?.length)) m.push('بدون جدولة');
+    if (!u.assignedLevel) m.push('بانتظار تحديد المستوى');
     return m;
   };
 
@@ -150,7 +144,7 @@ export default function PendingLevelPage() {
         writtenPercentage: placement?.writtenPercentage ?? u.placementExamScore ?? null,
       });
     } catch {
-      toast.error('تعذر جلب ملف المراجعة');
+      toast.error('تعذّر جلب ملف المراجعة');
     } finally { setReviewLoading(false); }
   };
 
@@ -161,7 +155,7 @@ export default function PendingLevelPage() {
       await downloadStudentReport(u);
       toast.success('تم تجهيز التقرير — اطبعه أو احفظه PDF');
     } catch {
-      toast.error('تعذر تجهيز التقرير');
+      toast.error('تعذّر تجهيز التقرير');
     } finally { setReportId(null); }
   };
   // Pre-start subscription check: expired/unsubscribed students require
@@ -219,9 +213,9 @@ export default function PendingLevelPage() {
   return (
     <PageLayout>
       <div className="halaqa" style={{ maxWidth: 860, margin: '0 auto' }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK }}>بانتظار تحديد المستوى والجدولة</h1>
+        <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK }}>الطلاب الجدد</h1>
         <p style={{ margin: '0 0 16px', fontSize: 14, color: HQ.MUTED }}>
-          {students.length} طالب بانتظار الحسم — راجع ملفه، حدد مستواه ومواعيده، أو ابدأ بثاً مباشراً معه
+          {students.length} طالب جديد بانتظار تحديد المستوى — راجع ملفه، حدد مستواه، أو ابدأ بثاً مباشراً معه
         </p>
 
         <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -246,8 +240,8 @@ export default function PendingLevelPage() {
         ) : filtered.length === 0 ? (
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 40, textAlign: 'center' }}>
             <CheckCircle size={40} color={HQ.MENTOR} style={{ margin: '0 auto 12px' }} />
-            <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: HQ.INK }}>لا يوجد طلاب بانتظار تحديد المستوى 🎉</p>
-            <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.MUTED }}>كل الطلاب محددي المستوى ومجدولي المواعيد</p>
+            <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: HQ.INK }}>لا يوجد طلاب جدد 🎉</p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.MUTED }}>كل الطلاب محدد مستواهم</p>
           </div>
         ) : (
           <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>

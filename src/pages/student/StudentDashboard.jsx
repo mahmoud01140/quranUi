@@ -137,32 +137,29 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     loadLocal();
-    const interval = setInterval(() => {
-      api.get('/live/active/me').then(res => {
-        if (res.data?.session) {
-          setActiveLiveSession(res.data.session);
-        } else {
-          setActiveLiveSession(null);
-        }
-      }).catch(() => {});
-    }, 15000);
-    return () => clearInterval(interval);
+    // ملاحظة: استطلاع /live/active/me يتم عبر usePolling أعلاه (كل 10 ثوانٍ) —
+    // لا مؤقت مكرر هنا لتجنب مضاعفة الطلبات.
   }, [myId]);
 
   const handleTabChange = (key) => {
     setSearchParams(key === 'all' ? {} : { tab: key });
   };
 
+  // قفل أثناء الحفظ: يمنع الضغط المزدوج الذي كان يرسل طلبات مكررة
+  const [togglingPortion, setTogglingPortion] = useState(null);
   const handleTogglePortion = async (portion) => {
-    if (!dailyTask?._id) return;
+    if (!dailyTask?._id || togglingPortion) return;
     const currentStatus = dailyTask[portion]?.status;
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    setTogglingPortion(portion);
     try {
       const res = await api.put(`/daily-tasks/${dailyTask._id}/portion`, { portion, status: newStatus });
       setDailyTask(res.data.task);
       if (newStatus === 'completed') toast.success('بارك الله فيك! تم إنجاز هذا الجزء من الورد');
     } catch {
       toast.error('حدث خطأ في تحديث حالة الورد');
+    } finally {
+      setTogglingPortion(null);
     }
   };
 
@@ -190,7 +187,7 @@ export default function StudentDashboard() {
       setLinkCodeData(res.data);
       toast.success('تم إصدار رمز ربط جديد بنجاح');
     } catch {
-      toast.error('تعذر تجديد الرمز حالياً');
+      toast.error('تعذّر تجديد الرمز حالياً');
     } finally {
       setRegeneratingCode(false);
     }
@@ -378,7 +375,7 @@ export default function StudentDashboard() {
                 <span style={{ fontWeight: 800, color: HQ.INK, flex: 'none' }}>التالي:</span>
                 <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{next.label}</span>
                 {next.to && <Link to={next.to} aria-label={`انتقال: ${next.label}`} style={{ color: HQ.MENTOR, display: 'inline-flex', flex: 'none' }}><ChevronLeft size={18} /></Link>}
-                {next.tab && <button type="button" onClick={() => handleTabChange(next.tab)} style={{ background: 'none', border: 'none', color: HQ.MENTOR, cursor: 'pointer', padding: 0 }}><ChevronLeft size={18} /></button>}
+                {next.tab && <button type="button" onClick={() => handleTabChange(next.tab)} aria-label={`انتقال: ${next.label}`} style={{ background: 'none', border: 'none', color: HQ.MENTOR, cursor: 'pointer', padding: 0 }}><ChevronLeft size={18} /></button>}
               </section>
             )}
 
@@ -462,8 +459,10 @@ export default function StudentDashboard() {
                             <button
                               type="button"
                               onClick={() => handleTogglePortion(p.key)}
+                              disabled={togglingPortion !== null}
                               aria-label={isDone ? `تعليم ${p.label} كمتبقٍ` : `تعليم ${p.label} كمنجز`}
                               aria-pressed={isDone}
+                              aria-busy={togglingPortion === p.key}
                               style={{
                                 width: 48, height: 48, borderRadius: 9999,
                                 border: `2px solid ${isDone ? HQ.MENTOR : HQ.LINE}`,
@@ -472,7 +471,8 @@ export default function StudentDashboard() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
+                                cursor: togglingPortion !== null ? 'wait' : 'pointer',
+                                opacity: togglingPortion !== null && togglingPortion !== p.key ? 0.55 : 1,
                                 flex: 'none',
                               }}
                             >
@@ -575,8 +575,10 @@ export default function StudentDashboard() {
                             <button
                               type="button"
                               onClick={() => handleTogglePortion(p.key)}
+                              disabled={togglingPortion !== null}
                               aria-pressed={isDone}
                               aria-label={isDone ? `تعليم ${p.label} كمتبقٍ` : `تعليم ${p.label} كمنجز`}
+                              aria-busy={togglingPortion === p.key}
                               style={{
                                 width: 48, height: 48, borderRadius: 9999,
                                 border: `2px solid ${isDone ? HQ.MENTOR : HQ.LINE}`,
@@ -585,7 +587,8 @@ export default function StudentDashboard() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                cursor: 'pointer',
+                                cursor: togglingPortion !== null ? 'wait' : 'pointer',
+                                opacity: togglingPortion !== null && togglingPortion !== p.key ? 0.55 : 1,
                                 flex: 'none',
                               }}
                             >

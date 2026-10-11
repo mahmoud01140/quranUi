@@ -47,7 +47,7 @@ export async function uploadFileToDriveDirect(file, { onProgress } = {}) {
     size: file.size,
   });
   const sessionUri = sessionRes.data?.sessionUri;
-  if (!sessionUri) throw new Error('تعذر تجهيز جلسة الرفع');
+  if (!sessionUri) throw new Error('تعذّر تجهيز جلسة الرفع');
   // 2. PUT the bytes straight to Google (bypasses our server entirely)
   const driveFileId = await xhrPut(sessionUri, file, file.type, onProgress);
   return { driveFileId };

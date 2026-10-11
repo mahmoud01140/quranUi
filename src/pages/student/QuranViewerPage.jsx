@@ -111,7 +111,7 @@ export default function QuranViewerPage() {
         toast('لا يوجد ورد حفظ جديد محدد لك اليوم بعد');
       }
     } catch {
-      toast.error('تعذر جلب الورد المطلوب');
+      toast.error('تعذّر جلب الورد المطلوب');
     } finally {
       setLoadingWird(false);
     }

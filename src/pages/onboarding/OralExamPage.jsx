@@ -107,7 +107,7 @@ export default function OralExamPage() {
   const handleSubmitAll = async () => {
     const examId = currentExam?._id || contextExamId;
     if (!examId) {
-      toast.error('تعذر تحديد الامتحان. أعد تحميل الصفحة وحاول مجدداً.');
+      toast.error('تعذّر تحديد الامتحان. أعد تحميل الصفحة وحاول مجدداً.');
       return;
     }
     if (!tasks.length || Object.keys(completed).length < tasks.length) {
@@ -277,7 +277,7 @@ export default function OralExamPage() {
                       aria-label="مدة التسجيل الحالية"
                     >
                       <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#C2410C' }} aria-hidden />
-                      {formatCountdown(duration)}
+                      <span dir="ltr">{formatCountdown(duration)}</span>
                     </div>
                   )}
 

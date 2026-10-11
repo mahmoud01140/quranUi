@@ -521,3 +521,81 @@ table.hq-table {
     justify-content: center;
   }
 }
+
+/* ── Discussion pages (student & admin): viewport-exact chat shell ──
+   The shell fills the window EXACTLY so the page itself never scrolls —
+   only the message list does. The composer lands flush on top of the
+   mobile bottom nav (WhatsApp-like) and floats as a card on desktop.
+   Measured facts this math depends on (≤640px):
+     above shell = main pt-16 (64) + container pt (16)  = 80px
+     below shell = container pb (24) + main pb-28 (112) = 136px
+   So height = 100dvh − 80 − (68 nav + safe-area) and margin-bottom −136px
+   cancels the leftover padding → document ends exactly at the nav top.
+   641–1023px: container pt 24 → 88px above (rest identical).
+   ≥1024px: no bottom nav; below shell = 24 + 32 = 56px, card floats. */
+.halaqa.hq-chat-shell {
+  height: calc(100vh - 148px); /* fallback for pre-dvh browsers */
+  height: calc(100dvh - 148px - env(safe-area-inset-bottom, 0px));
+  margin-bottom: -136px;
+  border-bottom: none;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+  .halaqa.hq-chat-shell {
+    height: calc(100dvh - 156px - env(safe-area-inset-bottom, 0px));
+    margin-bottom: -136px;
+    border-bottom: none;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+@media (min-width: 1024px) {
+  .halaqa.hq-chat-shell {
+    height: calc(100dvh - 144px);
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--hq-line);
+    border-bottom-left-radius: 24px;
+    border-bottom-right-radius: 24px;
+  }
+}
+
+/* Message list scroller: contain overscroll so touch gestures never
+   rubber-band the whole page or trigger pull-to-refresh mid-chat. */
+.halaqa .hq-chat-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* iOS keyboard: Safari overlays the keyboard without resizing the layout
+   viewport, so 100dvh never shrinks. useKeyboardViewport publishes the
+   visual-viewport height as --hq-vv and flags .hq-kb on <html> while the
+   keyboard is up; the shell then fits exactly above the keyboard.
+   Android is covered by interactive-widget=resizes-content (100dvh shrinks). */
+html.hq-kb .halaqa.hq-chat-shell {
+  height: calc(var(--hq-vv, 100dvh) - 80px) !important; /* 64 navbar + 16 pad */
+  margin-bottom: -136px !important;
+}
+
+/* Floating scroll-to-latest: tiny corner FAB, icon only.
+   Small enough to never crowd the screen on phones. */
+.halaqa .hq-jump {
+  position: absolute;
+  bottom: 76px; /* clears the ~64px composer bar */
+  left: 12px; /* RTL: opposite the incoming-messages side */
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--hq-line);
+  box-shadow: 0 2px 8px rgba(42, 36, 56, 0.12);
+  color: var(--hq-mentor);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.halaqa .hq-jump:hover { background: #fff; }
+.halaqa .hq-jump:active { transform: scale(0.92); }

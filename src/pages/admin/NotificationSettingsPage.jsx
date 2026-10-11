@@ -74,7 +74,7 @@ export default function NotificationSettingsPage() {
       if (res.data?.settings) setSettings(res.data.settings);
       toast.success('تم حفظ إعدادات التنبيهات');
     } catch (_) {
-      toast.error('تعذر الحفظ — أعد تحميل الصفحة وحاول مجدداً');
+      toast.error('تعذّر الحفظ — أعد تحميل الصفحة وحاول مجدداً');
       fetchSettings();
     } finally {
       setSaving(false);
@@ -101,7 +101,7 @@ export default function NotificationSettingsPage() {
           <div style={{ textAlign: 'center', padding: 48 }}><LoadingSpinner size="md" text="جارٍ جلب الإعدادات..." /></div>
         ) : loadFailed || !settings ? (
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 40, textAlign: 'center' }} role="alert">
-            <p style={{ margin: '0 0 20px', fontSize: 14, color: HQ.MUTED }}>تعذر تحميل إعدادات التنبيهات.</p>
+            <p style={{ margin: '0 0 20px', fontSize: 14, color: HQ.MUTED }}>تعذّر تحميل إعدادات التنبيهات.</p>
             <button type="button" onClick={fetchSettings} className="hq-action" style={{ background: HQ.MENTOR, color: '#fff', padding: '0 24px', fontSize: 15 }}>
               إعادة المحاولة
             </button>

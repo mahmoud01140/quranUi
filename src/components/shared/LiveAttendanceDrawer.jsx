@@ -64,7 +64,7 @@ export default function LiveAttendanceDrawer({
           present: false,
         }]);
       } else {
-        toast.error('تعذر جلب قائمة الحضور');
+        toast.error('تعذّر جلب قائمة الحضور');
         setStudents([]);
       }
     } finally {
@@ -92,7 +92,7 @@ export default function LiveAttendanceDrawer({
       setStudents(prev => prev.map(s =>
         s._id === stu._id ? { ...s, present: !nextPresent } : s
       ));
-      toast.error('تعذر حفظ الحضور');
+      toast.error('تعذّر حفظ الحضور');
     } finally {
       setTogglingId(null);
     }

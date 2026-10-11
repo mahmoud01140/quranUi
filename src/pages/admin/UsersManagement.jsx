@@ -194,7 +194,7 @@ export default function UsersManagement() {
       await downloadStudentReport(u);
       toast.success('تم تجهيز التقرير — اطبعه أو احفظه PDF');
     } catch {
-      toast.error('تعذر تجهيز التقرير');
+      toast.error('تعذّر تجهيز التقرير');
     } finally {
       setReportId(null);
     }
@@ -222,7 +222,7 @@ export default function UsersManagement() {
       await navigator.clipboard.writeText(pwResetResult);
       setCopiedPw(true);
     } catch {
-      toast.error('تعذر النسخ — انسخها يدوياً');
+      toast.error('تعذّر النسخ — انسخها يدوياً');
     }
   };
 
@@ -272,7 +272,7 @@ export default function UsersManagement() {
         status: placement?.status || null,
       });
     } catch {
-      toast.error('تعذر جلب ملف المراجعة');
+      toast.error('تعذّر جلب ملف المراجعة');
     } finally {
       setReviewLoading(false);
     }
@@ -657,7 +657,7 @@ export default function UsersManagement() {
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: HQ.INK }}>
                   جدولة مواعيد البث واعتماد الطالب
                 </h3>
-                <button type="button" onClick={() => setScheduleModalUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
+                <button type="button" onClick={() => setScheduleModalUser(null)} aria-label="إغلاق نافذة الجدولة والاعتماد" style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
                   <X size={20} />
                 </button>
               </div>
@@ -840,7 +840,7 @@ export default function UsersManagement() {
                 <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: HQ.INK, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ClipboardList size={18} color="#B45309" /> ملف مراجعة الطالب
                 </h3>
-                <button type="button" onClick={() => setReviewUser(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
+                <button type="button" onClick={() => setReviewUser(null)} aria-label="إغلاق نافذة ملف المراجعة" style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
                   <X size={20} />
                 </button>
               </div>

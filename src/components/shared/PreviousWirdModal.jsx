@@ -62,7 +62,7 @@ export default function PreviousWirdModal({ open, studentId, studentName, onClos
         {loading ? (
           <div style={{ textAlign: 'center', padding: 32 }}><LoadingSpinner size="md" text="جارٍ جلب الورد السابق..." /></div>
         ) : failed ? (
-          <p style={{ margin: 0, fontSize: 14, color: '#C2410C' }}>تعذر جلب الورد السابق — حاول مجدداً.</p>
+          <p style={{ margin: 0, fontSize: 14, color: '#C2410C' }}>تعذّر جلب الورد السابق — حاول مجدداً.</p>
         ) : !task ? (
           <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED }}>لا يوجد ورد سابق لهذا الطالب بعد.</p>
         ) : (

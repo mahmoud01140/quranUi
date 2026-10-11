@@ -20,6 +20,7 @@ const DUE_POLL_MS = 60000;
 export default function useNotifications() {
   const { notifications, fetchNotifications, addNotification } = useNotificationStore();
   const seenRef = useRef(new Set((notifications || []).map((n) => n._id?.toString())));
+  const seenDueRef = useRef(new Set());
   const firstRunRef = useRef(true);
 
   // Initial load once
@@ -71,6 +72,9 @@ export default function useNotifications() {
       const sessions = res.data?.sessions || [];
       (res.data?.notifiedIds || []).forEach((id) => seenRef.current.add(String(id)));
       sessions.forEach((s) => {
+        const key = String(s._id || s.id || s.title);
+        if (seenDueRef.current.has(key)) return; // دفاع إضافي: لا تنبيه مكرر لنفس الجلسة
+        seenDueRef.current.add(key);
         toast(`⏰ حان موعد حصة: ${s.title || 'جلسة مباشرة'}${s.ownerName ? ` — ${s.ownerName}` : ''}`, {
           icon: '⏰',
           duration: 10000,

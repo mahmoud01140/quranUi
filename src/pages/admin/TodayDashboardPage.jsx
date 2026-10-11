@@ -36,9 +36,9 @@ const toMinutes = (t) => {
   return h * 60 + m;
 };
 
+// الطلاب الجدد = من لم يُحدد مستواهم بعد (بغض النظر عن الجدولة — الطالب يحجز جدوله بنفسه عند التسجيل)
 const isWaiting = (u) =>
-  u.role === 'student' &&
-  (u.isApproved === false || !u.assignedLevel || !(u.scheduleDays?.length));
+  u.role === 'student' && !u.assignedLevel;
 
 /* غلاف مودال موحد: dialog دلالي + إغلاق بالـ Escape + إغلاق بالنقر خارج البطاقة */
 function Modal({ title, onClose, children, maxWidth = 500, labelledBy }) {
@@ -283,7 +283,7 @@ export default function TodayDashboardPage() {
         writtenPercentage: placement?.writtenPercentage ?? full.placementExamScore ?? null,
       });
     } catch {
-      toast.error('تعذر جلب ملف المراجعة');
+      toast.error('تعذّر جلب ملف المراجعة');
     } finally { setReviewLoading(false); }
   };
 
@@ -356,7 +356,7 @@ export default function TodayDashboardPage() {
           <div style={{ flex: '1 1 220px', minWidth: 0 }}>
             <h1 style={{ margin: '0 0 4px', fontSize: 26, fontWeight: 900, color: HQ.INK, lineHeight: 1.4 }}>لوحة اليوم</h1>
             <p style={{ margin: 0, fontSize: 14, color: HQ.MUTED, lineHeight: 1.8 }}>
-              {todayName} · {formatDateAr(now, 'd MMMM yyyy')} · شغل اليوم كله من هنا: حصص واشتراكات وطلاب منتظرون
+              {todayName} · {formatDateAr(now, 'd MMMM yyyy')} · شغل اليوم كله من هنا: حصص واشتراكات وطلاب جدد
             </p>
           </div>
           <button type="button" onClick={() => fetchAll(false)} disabled={isLoading} className="hq-action"
@@ -395,7 +395,7 @@ export default function TodayDashboardPage() {
             <div role="navigation" aria-label="أقسام اليوم" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
               {statCard('حصص اليوم', todaySessions.length, nowCount ? HQ.MENTOR : HQ.INK, 'today-sessions', true)}
               {statCard('اشتراكات منتظرة', paymentsTotal, paymentsTotal ? HQ.WARNING : HQ.INK, 'today-payments', true)}
-              {statCard('طلاب منتظرون', waitingTotal, waitingTotal ? HQ.WARNING : HQ.INK, 'today-waiting', true)}
+              {statCard('طلاب جدد', waitingTotal, waitingTotal ? HQ.WARNING : HQ.INK, 'today-waiting', true)}
             </div>
 
             {/* Today's sessions */}
@@ -454,6 +454,12 @@ export default function TodayDashboardPage() {
                                 aria-label={`عرض دروس ${u.firstName} ${u.lastName}`}
                                 style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, color: HQ.MENTOR, padding: '0 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 800 }}>
                                 <ClipboardList size={15} /> الدروس
+                              </button>
+                              <button type="button" onClick={() => openSchedule(u)} disabled={actingId === u._id} className="hq-action"
+                                aria-label={`تغيير جدول ${u.firstName} ${u.lastName}`}
+                                title="تغيير الجدول الذي اختاره الطالب عند التسجيل"
+                                style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 14px', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 5, opacity: actingId === u._id ? 0.6 : 1 }}>
+                                <Calendar size={15} /> تغيير الجدول
                               </button>
                             </div>
                           </div>
@@ -531,22 +537,22 @@ export default function TodayDashboardPage() {
             </section>
 
             {/* Waiting students */}
-            <section id="today-waiting" aria-label="طلاب منتظرون" style={{ marginBottom: 8, scrollMarginTop: 84 }}>
+            <section id="today-waiting" aria-label="طلاب جدد" style={{ marginBottom: 8, scrollMarginTop: 84 }}>
               <div style={sectionHead}>
-                <h2 style={h2Style}>طلاب منتظرون ({waitingTotal})</h2>
+                <h2 style={h2Style}>طلاب جدد ({waitingTotal})</h2>
                 <button type="button" onClick={() => navigate('/admin/pending')} className="hq-action" style={ghostBtn}>
                   <Clock size={15} /> الكل
                 </button>
               </div>
               {waitingList.length === 0 ? (
-                <EmptyState icon={Inbox} title="لا يوجد منتظرون"
-                  hint="كل الطلاب مسكّنون في مستويات ومواعيد — عمل موفق."
+                <EmptyState icon={Inbox} title="لا يوجد طلاب جدد"
+                  hint="كل الطلاب محدد مستواهم — عمل موفق."
                   actionLabel="عرض كل الطلاب" onAction={() => navigate('/admin/users')} />
               ) : (
                 <>
                   <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                     {waitingList.map(u => {
-                      const reason = u.isApproved === false ? 'بانتظار الاعتماد' : !u.assignedLevel ? 'بدون مستوى' : 'بدون جدولة';
+                      const reason = 'بانتظار تحديد المستوى';
                       return (
                         <li key={u._id} style={rowCard(false)}>
                           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -593,7 +599,7 @@ export default function TodayDashboardPage() {
 
         {/* Schedule modal */}
         {scheduleUser && (
-          <Modal title="تحديد المستوى والجدولة" onClose={() => setScheduleUser(null)} labelledBy="sched-title">
+          <Modal title={scheduleUser.scheduleDays?.length ? 'تعديل جدول الطالب' : 'تحديد المستوى والجدولة'} onClose={() => setScheduleUser(null)} labelledBy="sched-title">
             <p id="sched-title" style={{ margin: '0 0 16px', fontSize: 14, color: HQ.MUTED }}>
               الطالب: <strong style={{ color: HQ.INK }}>{scheduleUser.firstName} {scheduleUser.lastName}</strong>
             </p>

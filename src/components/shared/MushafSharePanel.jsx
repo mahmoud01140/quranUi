@@ -12,6 +12,7 @@ export default function MushafSharePanel({
   range,
   interactive = false,
   sharing = false,
+  saving = false,
   onToggleShare,
   onNavigate,
   onClose,
@@ -82,14 +83,17 @@ export default function MushafSharePanel({
             <button
               type="button"
               onClick={onToggleShare}
+              disabled={saving}
               aria-pressed={sharing}
+              aria-busy={saving}
               className="hq-action"
               style={{
                 background: sharing ? HQ.MENTOR : HQ.PAPER, color: sharing ? '#fff' : HQ.MENTOR,
                 border: sharing ? 'none' : `1.5px solid ${HQ.MENTOR}`, padding: '0 16px', fontSize: 13,
+                opacity: saving ? 0.6 : 1, cursor: saving ? 'wait' : 'pointer',
               }}
             >
-              {sharing ? 'مشارَك مع الطالب ✓' : 'مشاركة مع الطالب'}
+              {saving ? 'جارٍ الحفظ...' : sharing ? 'مشارَك مع الطالب ✓' : 'مشاركة مع الطالب'}
             </button>
           )}
           {onClose && (

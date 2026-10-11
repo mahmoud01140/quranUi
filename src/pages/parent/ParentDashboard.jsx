@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Users, Clock, Plus, Trash2, AlertCircle, CheckCircle2, XCircle,
   Calendar, MessageSquare, Mail, CreditCard, BookOpen, Award,
@@ -13,11 +13,11 @@ import { HQ, HqAvatar, HqBadge } from '../../components/halaqa/primitives';
 import { uploadDirectToCloudinary } from '../../utils/cloudinaryUpload';
 
 const STATUS_TONE = {
-  present: { label: 'حاضر اليوم ✅', color: HQ.MENTOR, bg: '#E2EFE7' },
-  late: { label: 'متأخر ⏳', color: '#B45309', bg: '#FEF3C7' },
-  absent: { label: 'غائب اليوم ❌', color: '#C2410C', bg: '#FEE2E2' },
-  excused: { label: 'معذور 📝', color: '#4A3F6B', bg: '#EDE9FF' },
-  in_progress: { label: 'الحصة جارية الآن 🟢', color: HQ.MENTOR, bg: '#DCFCE7' },
+  present: { label: 'حاضر اليوم ✅', color: HQ.MENTOR, bg: HQ.MENTOR_WASH },
+  late: { label: 'متأخر ⏳', color: HQ.WARNING, bg: HQ.WARNING_WASH },
+  absent: { label: 'غائب اليوم ❌', color: HQ.ERROR, bg: HQ.ERROR_WASH },
+  excused: { label: 'معذور 📝', color: HQ.GUIDE, bg: HQ.GUIDE_WASH },
+  in_progress: { label: 'الحصة جارية الآن 🟢', color: HQ.MENTOR, bg: HQ.MENTOR_WASH },
   not_started: { label: 'لم تبدأ الحصة بعد', color: HQ.MUTED, bg: HQ.PAPER },
 };
 
@@ -36,6 +36,7 @@ export default function ParentDashboard() {
   const [selectedChildId, setSelectedChildId] = useState(null);
   const [childProgress, setChildProgress] = useState(null);
   const [loadingProgress, setLoadingProgress] = useState(false);
+  const [progressFailed, setProgressFailed] = useState(false);
   const [loadingChildren, setLoadingChildren] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -104,15 +105,24 @@ export default function ParentDashboard() {
     }
   };
 
+  // حارس السباق: تجاهل استجابة طفل قديم إذا بدّل الأب سريعاً لطفل آخر
+  const progressReqRef = useRef(0);
   const fetchChildProgress = async (childId) => {
+    const reqId = ++progressReqRef.current;
     setLoadingProgress(true);
+    setProgressFailed(false);
     try {
       const res = await api.get(`/parents/children/${childId}/progress`);
+      if (progressReqRef.current !== reqId) return; // استجابة متأخرة — تجاهلها
       setChildProgress(res.data);
     } catch {
+      if (progressReqRef.current !== reqId) return;
+      // لا تُبقِ تقريراً قديماً لطفل آخر — اعرض حالة خطأ مع زر إعادة
+      setChildProgress(null);
+      setProgressFailed(true);
       toast.error('خطأ في جلب تقرير تقدم الابن');
     } finally {
-      setLoadingProgress(false);
+      if (progressReqRef.current === reqId) setLoadingProgress(false);
     }
   };
 
@@ -272,7 +282,7 @@ export default function ParentDashboard() {
         ) : loadFailed && children.length === 0 ? (
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 36, textAlign: 'center' }}>
             <AlertCircle size={36} color="#C2410C" style={{ margin: '0 auto 12px' }} />
-            <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 900, color: HQ.INK }}>تعذر تحميل بيانات الأبناء</h3>
+            <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 900, color: HQ.INK }}>تعذّر تحميل بيانات الأبناء</h3>
             <p style={{ margin: '0 0 16px', fontSize: 13, color: HQ.MUTED }}>تأكد من اتصالك بالإنترنت ثم حاول مجدداً.</p>
             <button type="button" onClick={fetchChildren} className="hq-action" style={{ background: HQ.MENTOR, color: '#fff' }}>
               إعادة المحاولة
@@ -320,10 +330,20 @@ export default function ParentDashboard() {
             </div>
 
             {loadingProgress || !childProgress ? (
-              <div>
-                <div className="hq-skeleton" style={{ height: 160, width: '100%', marginBottom: 12 }} />
-                <div className="hq-skeleton" style={{ height: 120, width: '100%' }} />
-              </div>
+              progressFailed && !loadingProgress ? (
+                <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 40, textAlign: 'center' }} role="alert">
+                  <p style={{ margin: '0 0 4px', fontSize: 18, fontWeight: 900, color: HQ.INK }}>تعذّر تحميل تقرير الابن</p>
+                  <p style={{ margin: '0 0 20px', fontSize: 14, color: HQ.MUTED }}>تحقق من الاتصال ثم حاول مرة أخرى.</p>
+                  <button type="button" onClick={() => selectedChildId && fetchChildProgress(selectedChildId)} className="hq-action" style={{ background: HQ.MENTOR, color: '#fff', padding: '0 24px', fontSize: 15 }}>
+                    إعادة المحاولة
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div className="hq-skeleton" style={{ height: 160, width: '100%', marginBottom: 12 }} />
+                  <div className="hq-skeleton" style={{ height: 120, width: '100%' }} />
+                </div>
+              )
             ) : (
               <>
                 {/* ── 1. بطاقة حال الابن اليوم بلمحة واحدة ── */}
@@ -395,9 +415,9 @@ export default function ParentDashboard() {
                           role="alert"
                           style={{
                             margin: '0 0 8px', fontSize: 13, fontWeight: 700, padding: '10px 14px',
-                            borderRadius: 12, background: alert.severity === 'danger' ? '#FEF2F2' : '#FFFBEB',
-                            border: `1px solid ${alert.severity === 'danger' ? '#FCA5A5' : '#FCD34D'}`,
-                            color: alert.severity === 'danger' ? '#B91C1C' : '#92400E',
+                            borderRadius: 12, background: alert.severity === 'danger' ? HQ.ERROR_WASH : HQ.WARNING_WASH,
+                            border: `1px solid ${alert.severity === 'danger' ? HQ.ERROR : HQ.WARNING}`,
+                            color: alert.severity === 'danger' ? HQ.ERROR : HQ.WARNING,
                             display: 'flex', alignItems: 'center', gap: 8,
                           }}
                         >
@@ -552,8 +572,8 @@ export default function ParentDashboard() {
                           <span
                             style={{
                               fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 6,
-                              background: p.status === 'approved' ? '#DCFCE7' : p.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
-                              color: p.status === 'approved' ? '#15803D' : p.status === 'rejected' ? '#991B1B' : '#92400E'
+                              background: p.status === 'approved' ? HQ.MENTOR_WASH : p.status === 'rejected' ? HQ.ERROR_WASH : HQ.WARNING_WASH,
+                              color: p.status === 'approved' ? HQ.MENTOR : p.status === 'rejected' ? HQ.ERROR : HQ.WARNING
                             }}
                           >
                             {p.status === 'approved' ? 'معتمد ومفعّل' : p.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}

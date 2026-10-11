@@ -351,7 +351,7 @@ export default function CreateExamPage() {
                           disabled={!selectedGroupId || loadingLessons}
                           className="pr-10 focus:border-[#177B58] focus:outline-none disabled:opacity-50" style={field}>
                           <option value="">
-                            {loadingLessons ? 'جاري التحميل...' : !selectedGroupId ? 'اختر المجموعة أولاً' : 'امتحان عام للمجموعة (بدون درس محدد)'}
+                            {loadingLessons ? 'جارٍ التحميل...' : !selectedGroupId ? 'اختر المجموعة أولاً' : 'امتحان عام للمجموعة (بدون درس محدد)'}
                           </option>
                           {lessons.map(l => <option key={l._id} value={l._id}>{l.lessonNumber}. {l.title}</option>)}
                         </select>
@@ -390,7 +390,7 @@ export default function CreateExamPage() {
                             disabled={!selectedGroupId || loadingStudents}
                             className="pr-10 focus:border-[#177B58] focus:outline-none disabled:opacity-50" style={field}>
                             <option value="">
-                              {loadingStudents ? 'جاري تحميل الطلاب...' : !selectedGroupId ? 'اختر المجموعة أولاً' : groupStudents.length === 0 ? 'لا يوجد طلاب في المجموعة' : 'اختر الطالب...'}
+                              {loadingStudents ? 'جارٍ تحميل الطلاب...' : !selectedGroupId ? 'اختر المجموعة أولاً' : groupStudents.length === 0 ? 'لا يوجد طلاب في المجموعة' : 'اختر الطالب...'}
                             </option>
                             {groupStudents.map(st => (
                               <option key={st._id} value={st._id}>{st.firstName} {st.lastName} ({st.email || 'طالب'})</option>

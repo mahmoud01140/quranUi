@@ -96,7 +96,7 @@ export default function WaitingApprovalPage() {
         toast('المراجعة لا تزال جارية بعناية، شكراً لصبرك');
       }
     } catch (_) {
-      toast.error('تعذر التحقق من الاتصال');
+      toast.error('تعذّر التحقق من الاتصال');
     } finally {
       setIsRefreshing(false);
     }
@@ -118,7 +118,7 @@ export default function WaitingApprovalPage() {
         toast.error('تم رفض الإشعارات في المتصفح');
       }
     } catch (_) {
-      toast.error('تعذر تفعيل الإشعارات — تحقق من الاتصال وحاول مجدداً');
+      toast.error('تعذّر تفعيل الإشعارات — تحقق من الاتصال وحاول مجدداً');
     }
   };
 

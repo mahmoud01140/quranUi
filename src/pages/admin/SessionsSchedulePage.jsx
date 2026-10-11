@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RotateCcw, Radio, CheckCircle, Check, BookOpen, X, MessageCircle, Pencil, Award, Plus, Trash2, Download, CreditCard, Settings } from 'lucide-react';
+import { RotateCcw, Radio, CheckCircle, Check, BookOpen, X, MessageCircle, Pencil, Award, Plus, Trash2, Download, CreditCard, Settings, Calendar, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import PageLayout from '../../components/shared/PageLayout';
 import WirdAssignModal from '../../components/shared/WirdAssignModal';
@@ -9,6 +9,7 @@ import api from '../../services/api';
 import { getLevelLabel, formatDateAr, formatTime12Ar, getSubscriptionInfo } from '../../utils/helpers';
 import { notifySubscriptionWarning, fetchSubscriptionWarning, isBlockingWarning } from '../../utils/subscriptionWarning';
 import ConfirmModal from '../../components/shared/ConfirmModal';
+import SessionTimePicker from '../../components/shared/SessionTimePicker';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import PhoneChip from '../../components/shared/PhoneChip';
 import '../../components/halaqa/halaqa.css';
@@ -41,6 +42,48 @@ export default function SessionsSchedulePage() {
   const [activateUser, setActivateUser] = useState(null);
   const [activateDays, setActivateDays] = useState(30);
   const [now, setNow] = useState(() => new Date());
+
+  // تغيير جدول الطالب الذي اختاره عند التسجيل (يُفتح مملوءاً بجدوله الحالي)
+  const [scheduleUser, setScheduleUser] = useState(null);
+  const [scheduleForm, setScheduleForm] = useState({ assignedLevel: 'foundation', scheduleDays: [], sessionTime: '18:00' });
+
+  const openSchedule = (u) => {
+    setScheduleUser(u);
+    setScheduleForm({
+      assignedLevel: u.assignedLevel || 'foundation',
+      scheduleDays: Array.isArray(u.scheduleDays) && u.scheduleDays.length ? u.scheduleDays : ['السبت', 'الثلاثاء'],
+      sessionTime: u.sessionTime || '18:00',
+    });
+  };
+
+  const scheduleConflicts = (excludeId, days, time) => {
+    if (!time || !days?.length) return [];
+    return students.filter(s =>
+      s._id !== excludeId &&
+      (s.scheduleDays || []).some(d => days.includes(d)) &&
+      s.sessionTime === time
+    );
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!scheduleUser) return;
+    if (!scheduleForm.scheduleDays.length) return toast.error('حدد يوماً واحداً على الأقل');
+    const clashes = scheduleConflicts(scheduleUser._id, scheduleForm.scheduleDays, scheduleForm.sessionTime);
+    if (clashes.length) {
+      const c = clashes[0];
+      const day = (c.scheduleDays || []).find(d => scheduleForm.scheduleDays.includes(d));
+      return toast.error(`تعارض: ${c.firstName} ${c.lastName} محجوز يوم ${day} الساعة ${formatTime12Ar(c.sessionTime)}`);
+    }
+    setStartingId(scheduleUser._id);
+    try {
+      await api.put(`/users/${scheduleUser._id}/approve`, scheduleForm);
+      toast.success('تم حفظ الجدول الجديد للطالب بنجاح');
+      setScheduleUser(null);
+      await fetchData();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'خطأ في الحفظ');
+    } finally { setStartingId(null); }
+  };
 
   // إعدادات مواعيد المنصة ومدة المحاضرة المحددة من الأدمن
   const [scheduleConfig, setScheduleConfig] = useState({
@@ -112,7 +155,7 @@ export default function SessionsSchedulePage() {
       toast.success(res.data?.message || 'تم حفظ إعدادات المواعيد بنجاح');
       setShowConfigModal(false);
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'تعذر حفظ إعدادات المواعيد');
+      toast.error(err?.response?.data?.message || 'تعذّر حفظ إعدادات المواعيد');
     } finally {
       setSavingConfig(false);
     }
@@ -193,7 +236,7 @@ export default function SessionsSchedulePage() {
       const list = res.data?.plan?.customLessons || [];
       setLessons([...list].reverse());
     } catch {
-      toast.error('تعذر جلب دروس الطالب');
+      toast.error('تعذّر جلب دروس الطالب');
     } finally {
       setLessonsLoading(false);
     }
@@ -239,7 +282,7 @@ export default function SessionsSchedulePage() {
       await downloadStudentReport(u);
       toast.success('تم تجهيز التقرير — اطبعه أو احفظه PDF');
     } catch {
-      toast.error('تعذر تجهيز التقرير');
+      toast.error('تعذّر تجهيز التقرير');
     } finally {
       setReportId(null);
     }
@@ -399,7 +442,7 @@ export default function SessionsSchedulePage() {
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 40, textAlign: 'center' }}>
             <CheckCircle size={40} color={HQ.MUTED} style={{ margin: '0 auto 12px' }} />
             <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: HQ.INK }}>لا توجد حصص مجدولة بعد</p>
-            <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.MUTED }}>جدول مواعيد الطلاب من صفحة بانتظار تحديد المستوى</p>
+            <p style={{ margin: '4px 0 0', fontSize: 14, color: HQ.MUTED }}>جدول مواعيد الطلاب من صفحة الطلاب الجدد</p>
           </div>
         ) : (
           days.filter(d => d.entries.length).map(d => (
@@ -467,6 +510,13 @@ export default function SessionsSchedulePage() {
                             title="تفعيل الاشتراك لهذا الطالب يدوياً بدون سداد">
                             <CreditCard size={16} /> تفعيل الاشتراك
                           </button>
+                          <button type="button" onClick={() => openSchedule(u)}
+                            disabled={startingId === u._id}
+                            className="hq-action"
+                            style={{ background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, padding: '0 16px', fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6, opacity: startingId === u._id ? 0.6 : 1 }}
+                            title="تغيير الجدول الذي اختاره الطالب عند التسجيل">
+                            <Calendar size={16} /> تغيير الجدول
+                          </button>
                         </div>
                       </div>
                     </li>
@@ -506,6 +556,68 @@ export default function SessionsSchedulePage() {
                 <button type="button" onClick={() => setActivateUser(null)} className="hq-action" style={{ flex: 1, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, fontSize: 14 }}>إلغاء</button>
                 <button type="button" onClick={handleManualActivate} disabled={startingId === activateUser._id} className="hq-action" style={{ flex: 1, background: HQ.MENTOR, color: '#fff', fontSize: 14, opacity: startingId === activateUser._id ? 0.6 : 1 }}>
                   {startingId === activateUser._id ? 'جارٍ التفعيل...' : 'تأكيد التفعيل'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Change student schedule (prefilled with their chosen schedule) */}
+        {scheduleUser && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: HQ.SURFACE, borderRadius: 20, padding: 24, maxWidth: 500, width: '100%', border: `1px solid ${HQ.LINE}`, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: HQ.INK, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Calendar size={18} color={HQ.MENTOR} /> تغيير جدول الطالب
+                </h3>
+                <button type="button" onClick={() => setScheduleUser(null)} aria-label="إغلاق" style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED, minWidth: 40, minHeight: 40 }}>
+                  <X size={20} />
+                </button>
+              </div>
+              <p style={{ margin: '0 0 16px', fontSize: 14, color: HQ.MUTED }}>
+                الطالب: <strong style={{ color: HQ.INK }}>{scheduleUser.firstName} {scheduleUser.lastName}</strong>
+              </p>
+              <div style={{ marginBottom: 14 }}>
+                <label htmlFor="sched-change-level" style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>المستوى المعتمد</label>
+                <select id="sched-change-level" value={scheduleForm.assignedLevel} onChange={e => setScheduleForm(p => ({ ...p, assignedLevel: e.target.value }))} style={{ ...selectStyle, width: '100%' }}>
+                  <option value="foundation">المستوى التأسيسي</option>
+                  <option value="memorization">مستوى الحفظ والتجويد</option>
+                  <option value="teacher_prep">إعداد معلمين</option>
+                  <option value="senior">كبار السن</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: 14 }}>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 8 }}>أيام البث</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {WEEK_DAYS.map(day => {
+                    const selected = scheduleForm.scheduleDays.includes(day);
+                    return (
+                      <button key={day} type="button" onClick={() => setScheduleForm(p => ({ ...p, scheduleDays: p.scheduleDays.includes(day) ? p.scheduleDays.filter(d => d !== day) : [...p.scheduleDays, day] }))}
+                        style={{ padding: '8px 14px', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `1px solid ${selected ? HQ.MENTOR : HQ.LINE}`, background: selected ? HQ.MENTOR : HQ.PAPER, color: selected ? '#fff' : HQ.INK, fontFamily: 'inherit' }}>
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <span style={{ display: 'block', fontSize: 13, fontWeight: 800, color: HQ.INK, marginBottom: 6 }}>ساعة البث</span>
+                <SessionTimePicker value={scheduleForm.sessionTime} onChange={v => setScheduleForm(p => ({ ...p, sessionTime: v }))} />
+                {scheduleUser && scheduleConflicts(scheduleUser._id, scheduleForm.scheduleDays, scheduleForm.sessionTime).length > 0 && (
+                  <div role="alert" style={{ marginTop: 8, background: '#FDECEC', border: '1px solid #C2410C', borderRadius: 12, padding: '10px 14px', fontSize: 13, fontWeight: 700, color: '#C2410C', lineHeight: 1.8 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><AlertTriangle size={15} /> هذا الموعد محجوز:</span>
+                    {scheduleConflicts(scheduleUser._id, scheduleForm.scheduleDays, scheduleForm.sessionTime).slice(0, 3).map(c => {
+                      const day = (c.scheduleDays || []).find(d => scheduleForm.scheduleDays.includes(d));
+                      return <span key={c._id} style={{ display: 'block' }}>• {c.firstName} {c.lastName} — يوم {day} الساعة {formatTime12Ar(c.sessionTime)}</span>;
+                    })}
+                    اختر وقتاً آخر.
+                  </div>
+                )}
+              </div>
+              <div className="m-modal-actions" style={{ display: 'flex', gap: 10 }}>
+                <button type="button" onClick={() => setScheduleUser(null)} className="hq-action" style={{ flex: 1, background: HQ.PAPER, border: `1px solid ${HQ.LINE}`, color: HQ.INK, fontSize: 14 }}>إلغاء</button>
+                <button type="button" onClick={handleSaveSchedule} disabled={startingId === scheduleUser._id} className="hq-action" style={{ flex: 1, background: HQ.MENTOR, color: '#fff', fontSize: 14, opacity: startingId === scheduleUser._id ? 0.6 : 1 }}>
+                  {startingId === scheduleUser._id ? <LoadingSpinner size="sm" /> : 'حفظ الجدول الجديد'}
                 </button>
               </div>
             </div>

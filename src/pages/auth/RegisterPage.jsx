@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const [showPass, setShowPass] = useState(false);
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState(null);
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', password: '', confirmPassword: '',
     phone: '', dateOfBirth: '', gender: '', role: 'student',
@@ -32,12 +33,14 @@ export default function RegisterPage() {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+    if (serverError) setServerError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validateRegisterForm(form);
     if (hasErrors(errs)) { setErrors(errs); return; }
+    setServerError(null);
 
     try {
       const { firstName, lastName, email, password, phone, dateOfBirth, gender, role } = form;
@@ -49,7 +52,8 @@ export default function RegisterPage() {
         navigate('/onboarding/type');
       }
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'خطأ في التسجيل');
+      // صندوق خطأ ثابت يبقى ظاهراً (الـ toast وحده يختفي وقد يفوته المستخدم)
+      setServerError(error?.response?.data?.message || 'خطأ في التسجيل — تحقق من البيانات وحاول مجدداً');
     }
   };
 
@@ -219,6 +223,20 @@ export default function RegisterPage() {
                 </select>
               </div>
             </div>
+
+            {serverError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 text-sm font-bold"
+                style={{
+                  background: '#FDECEC', border: '1px solid #C2410C', color: '#C2410C',
+                  borderRadius: 12, padding: '10px 14px', lineHeight: 1.8, marginTop: 8,
+                }}
+              >
+                <CircleAlert className="w-4 h-4 flex-none mt-0.5" aria-hidden />
+                <span>{serverError}</span>
+              </div>
+            )}
 
             <button type="submit" disabled={isLoading} className="auth-btn" style={{ marginTop: 8 }}>
               {isLoading ? <LoadingSpinner size="sm" color="white" /> : 'إنشاء الحساب'}

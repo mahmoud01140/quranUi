@@ -431,7 +431,7 @@ export default function LiveClassPage() {
           <strong style={{ fontSize: 15, color: HQ.INK, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '38vw' }}>
             {session?.title || 'الحلقة المباشرة'}
           </strong>
-          <span className="hidden md:inline" style={{ fontSize: 12, color: '#15803D', fontWeight: 700, background: '#DCFCE7', padding: '2px 8px', borderRadius: 12 }}>جلسة فردية مباشرة</span>
+          <span className="hidden md:inline" style={{ fontSize: 12, color: HQ.MENTOR, fontWeight: 700, background: HQ.MENTOR_WASH, padding: '2px 8px', borderRadius: 12 }}>جلسة فردية مباشرة</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
           {isSessionLive && (

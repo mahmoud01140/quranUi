@@ -23,7 +23,7 @@ const teacherNavItems = [
 
 const adminNavItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'الرئيسية', end: true },
-  { to: '/admin/pending', icon: ClipboardList, label: 'الانتظار' },
+  { to: '/admin/pending', icon: ClipboardList, label: 'الجدد' },
   { to: '/admin/exams', icon: FileText, label: 'الامتحانات' },
   { to: '/admin/users', icon: Users, label: 'الطلاب' },
 ];

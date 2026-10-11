@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState(null);
   const [isFocused, setIsFocused] = useState({});
 
   const handleSubmit = async (e) => {
@@ -22,6 +23,7 @@ export default function LoginPage() {
     if (!identifier.trim()) errs.identifier = 'رقم الهاتف أو البريد الإلكتروني مطلوب';
     if (!password) errs.password = 'كلمة المرور مطلوبة';
     if (Object.keys(errs).length) { setErrors(errs); return; }
+    setServerError(null);
 
     try {
       const data = await login(identifier.trim(), password);
@@ -38,7 +40,8 @@ export default function LoginPage() {
       else if (!u.assignedLevel) navigate('/onboarding/type');
       else navigate('/student');
     } catch (error) {
-      toast.error(error?.response?.data?.message || 'خطأ في تسجيل الدخول');
+      // صندوق خطأ ثابت يبقى ظاهراً (الـ toast وحده يختفي وقد يفوته المستخدم)
+      setServerError(error?.response?.data?.message || 'خطأ في تسجيل الدخول — تحقق من البيانات وحاول مجدداً');
     }
   };
 
@@ -103,7 +106,7 @@ export default function LoginPage() {
                   type="text"
                   inputMode={identifier.includes('@') ? 'email' : 'tel'}
                   value={identifier}
-                  onChange={(e) => { setIdentifier(e.target.value); if (errors.identifier) setErrors(p => ({ ...p, identifier: null })); }}
+                  onChange={(e) => { setIdentifier(e.target.value); if (errors.identifier) setErrors(p => ({ ...p, identifier: null })); if (serverError) setServerError(null); }}
                   onFocus={() => handleFocus('identifier')}
                   onBlur={() => handleBlur('identifier')}
                   className="auth-input pr-10"
@@ -138,7 +141,7 @@ export default function LoginPage() {
                 <input
                   type={showPass ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password: null })); }}
+                  onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(p => ({ ...p, password: null })); if (serverError) setServerError(null); }}
                   onFocus={() => handleFocus('password')}
                   onBlur={() => handleBlur('password')}
                   className="auth-input pr-10 pl-12"
@@ -165,6 +168,20 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
+
+            {serverError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 text-sm font-bold"
+                style={{
+                  background: '#FDECEC', border: '1px solid #C2410C', color: '#C2410C',
+                  borderRadius: 12, padding: '10px 14px', lineHeight: 1.8,
+                }}
+              >
+                <CircleAlert className="w-4 h-4 flex-none mt-0.5" aria-hidden />
+                <span>{serverError}</span>
+              </div>
+            )}
 
             <button type="submit" disabled={isLoading} className="auth-btn">
               {isLoading ? <LoadingSpinner size="sm" color="white" /> : 'تسجيل الدخول'}

@@ -100,11 +100,11 @@ export default function LiveBroadcastPage() {
         setIsBroadcasting(true);
         // No socket room join — state is HTTP polling (Vercel-safe)
       } else {
-        toast.error('تعذر العثور على الجلسة');
+        toast.error('تعذّر العثور على الجلسة');
         navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users', { replace: true });
       }
     }).catch(() => {
-      toast.error('تعذر الاتصال بالجلسة');
+      toast.error('تعذّر الاتصال بالجلسة');
       navigate(user?.role === 'teacher' ? '/teacher' : '/admin/users', { replace: true });
     }).finally(() => {
       setLoadingSession(false);
@@ -199,7 +199,7 @@ export default function LiveBroadcastPage() {
       }
       return true;
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'تعذر حفظ المشاركة');
+      toast.error(err?.response?.data?.message || 'تعذّر حفظ المشاركة');
       return false;
     } finally {
       setSavingMushaf(false);
@@ -565,6 +565,7 @@ export default function LiveBroadcastPage() {
               interactive
               range={mushafRange}
               sharing={mushafSharing}
+              saving={savingMushaf}
               onToggleShare={handleToggleMushafShare}
               onNavigate={handleMushafNavigate}
               onClose={() => setShowMushaf(false)}
@@ -608,7 +609,7 @@ function LessonEditModal({ studentName, lessonForm, setLessonForm, availableExam
               تم إنشاء هذا الدرس تلقائياً في قائمة منهج الطالب <strong>{studentName || ''}</strong>. يمكنك الآن إضافة التسجيل والمصادر والاختبارات.
             </p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
+          <button type="button" onClick={onClose} aria-label="إغلاق نافذة تعديل الدرس" style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
             <X size={20} />
           </button>
         </div>

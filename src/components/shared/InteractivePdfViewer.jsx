@@ -630,7 +630,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
                       <div className="flex items-center gap-2 text-xs p-3 rounded-lg"
                         style={{ color: '#756E85', background: '#FBF7EE', border: '1px solid #E8E2D4' }}>
                         <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#177B58' }} aria-hidden />
-                        <span>جاري فهرسة نصوص الملف للبحث...</span>
+                        <span>جارٍ فهرسة نصوص الملف للبحث...</span>
                       </div>
                     )}
 
@@ -746,7 +746,7 @@ export default function InteractivePdfViewer({ pdfUrl, title, resourceId, onClos
           {isPdfLoading ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3" style={{ color: '#756E85' }}>
               <Loader2 className="w-10 h-10 animate-spin" style={{ color: '#177B58' }} aria-hidden />
-              <p className="text-sm font-semibold animate-pulse" style={{ margin: 0 }}>جاري تحميل المستند وبدء العرض...</p>
+              <p className="text-sm font-semibold animate-pulse" style={{ margin: 0 }}>جارٍ تحميل المستند وبدء العرض...</p>
             </div>
           ) : error ? (
             <div className="p-6 rounded-2xl text-center max-w-md my-auto" style={{ background: '#FFFFFF', border: '1px solid #E8E2D4' }}>

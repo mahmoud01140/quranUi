@@ -236,7 +236,7 @@ export default function TakeExamPage() {
         setRecitationFailed(false);
       } catch (_) {
         setRecitationFailed(true);
-        toast.error('سُلّمت الإجابات الكتابية، لكن تعذر رفع التسجيلات الصوتية — أعد المحاولة من شاشة النتيجة');
+        toast.error('سُلّمت الإجابات الكتابية، لكن تعذّر رفع التسجيلات الصوتية — أعد المحاولة من شاشة النتيجة');
       }
 
       setResult(res);
@@ -254,7 +254,7 @@ export default function TakeExamPage() {
       setRecitationFailed(false);
       toast.success('تم رفع التسجيلات الصوتية بنجاح');
     } catch (_) {
-      toast.error('تعذر الرفع مجدداً — تحقق من الاتصال وحاول مرة أخرى');
+      toast.error('تعذّر الرفع مجدداً — تحقق من الاتصال وحاول مرة أخرى');
     }
   };
 
@@ -310,7 +310,7 @@ export default function TakeExamPage() {
             {recitationFailed && (
               <div role="alert" className="my-4 p-3" style={{ background: HQ.PAPER, border: '1px solid #C2410C', borderRadius: 12 }}>
                 <p className="text-sm font-bold mb-2" style={{ color: '#C2410C' }}>
-                  تعذر رفع تسجيلاتك الصوتية — إجاباتك الكتابية محفوظة.
+                  تعذّر رفع تسجيلاتك الصوتية — إجاباتك الكتابية محفوظة.
                 </p>
                 <button type="button" onClick={handleRetryRecitation}
                   className="hq-action" style={{ background: '#C2410C', color: '#fff', padding: '0 20px', fontSize: 14, width: '100%' }}>
@@ -384,7 +384,7 @@ export default function TakeExamPage() {
                         background: timeLeft < 120 ? '#C2410C' : HQ.PAPER, color: timeLeft < 120 ? '#fff' : HQ.INK,
                       }}>
                       <Clock size={13} aria-hidden />
-                      {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
+                      <span dir="ltr">{String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}</span>
                     </span>
                   )}
                   <span style={{
@@ -393,7 +393,7 @@ export default function TakeExamPage() {
                   }}>
                     {TYPE_LABEL[q.type] || q.type}
                   </span>
-                  <span className="text-sm font-semibold" style={{ color: HQ.MUTED, fontVariantNumeric: 'tabular-nums' }}>
+                  <span dir="ltr" className="text-sm font-semibold" style={{ color: HQ.MUTED, fontVariantNumeric: 'tabular-nums' }}>
                     {currentQuestion + 1} / {total}
                   </span>
                 </div>

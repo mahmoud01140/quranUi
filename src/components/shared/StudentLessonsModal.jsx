@@ -54,7 +54,7 @@ export default function StudentLessonsModal({ user, onClose, discussionBase = '/
         const list = res.data?.plan?.customLessons || [];
         setLessons([...list].reverse()); // الأحدث أولاً
       })
-      .catch(() => toast.error('تعذر جلب دروس الطالب'))
+      .catch(() => toast.error('تعذّر جلب دروس الطالب'))
       .finally(() => setLessonsLoading(false));
   }, [user?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -207,7 +207,7 @@ export default function StudentLessonsModal({ user, onClose, discussionBase = '/
             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: HQ.INK, display: 'flex', alignItems: 'center', gap: 8 }}>
               <BookOpen size={18} color={HQ.MENTOR} /> الدروس الفورية للطالب
             </h3>
-            <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
+            <button type="button" onClick={onClose} aria-label="إغلاق نافذة الدروس" style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
               <X size={20} />
             </button>
           </div>
@@ -362,7 +362,7 @@ export default function StudentLessonsModal({ user, onClose, discussionBase = '/
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: HQ.INK, display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Award size={18} color="#B45309" /> اختبار جديد للحصة
               </h3>
-              <button type="button" onClick={() => setExamModalLesson(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
+              <button type="button" onClick={() => setExamModalLesson(null)} aria-label="إغلاق نافذة إنشاء الاختبار" style={{ background: 'none', border: 'none', cursor: 'pointer', color: HQ.MUTED }}>
                 <X size={20} />
               </button>
             </div>

@@ -37,7 +37,7 @@ const adminLinks = [
   { section: 'الإدارة' },
   { to: '/admin/users', icon: Users, label: 'إدارة الطلاب والمستخدمين' },
   { to: '/admin/discussions', icon: MessageSquare, label: 'رسائل واستفسارات الطلاب' },
-  { to: '/admin/pending', icon: UserCheck, label: 'بانتظار تحديد المستوى' },
+  { to: '/admin/pending', icon: UserCheck, label: 'الطلاب الجدد' },
   { to: '/admin/schedule', icon: CalendarCheck, label: 'مواعيد الحصص' },
   { to: '/admin/payments', icon: CreditCard, label: 'الاشتراكات والمدفوعات' },
   { to: '/admin/reports', icon: BarChart2, label: 'كشوف الحضور والغياب' },

@@ -46,7 +46,7 @@ export default function StudentResourcesPage() {
     } else {
       // المكتبة العامة: للمحدد مستواهم والمسددين
       fetchGeneralResources({ category: categoryFilter !== 'all' ? categoryFilter : undefined })
-        .catch(err => setAccessDenied(err?.response?.data?.message || 'تعذر تحميل المكتبة'));
+        .catch(err => setAccessDenied(err?.response?.data?.message || 'تعذّر تحميل المكتبة'));
     }
   }, [groupId, categoryFilter]);
 

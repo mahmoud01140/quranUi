@@ -117,7 +117,7 @@ export default function AdminExamsPage() {
       setConfirmDeleteModal(null);
       fetchAdminAllExams();
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'تعذر حذف الامتحان');
+      toast.error(err?.response?.data?.message || 'تعذّر حذف الامتحان');
     } finally {
       setDeletingId(null);
     }
@@ -212,7 +212,7 @@ export default function AdminExamsPage() {
       const res = await api.get('/users/students/list');
       setStudents(res.data.students || []);
     } catch {
-      toast.error('تعذر جلب قائمة الطلاب');
+      toast.error('تعذّر جلب قائمة الطلاب');
       setStudents([]);
     } finally {
       setStudentsLoading(false);
@@ -227,7 +227,7 @@ export default function AdminExamsPage() {
       const res = await api.get(`/study-plans/student/${student._id}/full`);
       setPlanLessons(res.data.plan?.customLessons || []);
     } catch {
-      toast.error('تعذر جلب الخطة الفردية للطالب');
+      toast.error('تعذّر جلب الخطة الفردية للطالب');
       setPlanLessons([]);
     } finally {
       setLessonsLoading(false);

@@ -652,7 +652,7 @@ export default function AdminPaymentsPage() {
             <form onSubmit={handleSaveSettings} className="space-y-8">
               {settingsFailed && (
                 <div role="alert" style={{ background: HQ.SURFACE, border: '1px solid #C2410C', borderRadius: 14, padding: 16, fontSize: 14, color: '#C2410C', fontWeight: 700 }}>
-                  تعذر تحميل الإعدادات الحالية — الحقول فارغة عمداً حتى لا تُحفظ قيم وهمية. أعد تحميل الصفحة قبل الحفظ.
+                  تعذّر تحميل الإعدادات الحالية — الحقول فارغة عمداً حتى لا تُحفظ قيم وهمية. أعد تحميل الصفحة قبل الحفظ.
                 </div>
               )}
 
