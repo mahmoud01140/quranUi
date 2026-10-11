@@ -247,7 +247,7 @@ export default function LessonDiscussionPage() {
                           <span style={{ fontSize: 13, fontWeight: 800, color: HQ.INK }}>
                             {msg.sender?.firstName} {msg.sender?.lastName}
                           </span>
-                          {isStaff && <HqBadge tone="guide">{msg.sender?.role === 'admin' ? 'المعلم والمدير' : 'معلم'}</HqBadge>}
+                          {isStaff && <HqBadge tone="guide">{msg.sender?.role === 'admin' ? 'الشيخ ابوزيد' : 'معلم'}</HqBadge>}
                           <span style={{ fontSize: 11, color: HQ.MUTED }}>{timeAgoAr(msg.createdAt)}</span>
                         </div>
                       )}

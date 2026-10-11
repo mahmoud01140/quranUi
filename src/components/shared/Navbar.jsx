@@ -46,7 +46,8 @@ export default function Navbar({ onMenuClick }) {
 
   const isLanding = location.pathname === '/';
 
-  const roleLabel = (user?.role === 'admin' || user?.role === 'teacher') ? 'المعلم والمدير' 
+  const roleLabel = user?.role === 'admin' ? 'الشيخ ابوزيد'
+    : user?.role === 'teacher' ? 'معلم'
     : user?.role === 'parent' ? 'ولي أمر' : 'طالب';
 
   return (

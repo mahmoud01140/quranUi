@@ -83,8 +83,9 @@ export default function UsersManagement() {
     api.get('/users/schedule-map').then(res => {
       setScheduleMap(res.data.students || []);
     }).catch(() => {});
-    // نسب الحضور لشارات الطلاب (طلب واحد يُطابَق بالـ _id — بديل صفحة الكشوف)
-    api.get('/reports/attendance', { params: { timeframe: 'month' } }).then(res => {
+    // نسب الحضور لشارات الطلاب (طلب واحد يُطابَق بالـ _id — بديل صفحة الكشوف).
+    // النافذة الكاملة all عمداً: نافذة month كانت تُسقط الطلاب بلا حصص حديثة فتظهر «—» مضلِّلة.
+    api.get('/reports/attendance', { params: { timeframe: 'all' } }).then(res => {
       const map = {};
       (res.data?.students || []).forEach(s => {
         const id = s?.student?._id?.toString?.();

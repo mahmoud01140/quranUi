@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookOpen, Video, FileText, TrendingUp,
   Users, ClipboardList, BookMarked, Volume2, CreditCard,
+  CalendarCheck,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import '../../components/halaqa/halaqa.css';
@@ -21,11 +22,12 @@ const teacherNavItems = [
   { to: '/teacher/review', icon: ClipboardList, label: 'التصحيح' },
 ];
 
+/* للأدمن: اليومي فقط في الشريط السفلي — المتقدم عبر القائمة الجانبية */
 const adminNavItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'الرئيسية', end: true },
-  { to: '/admin/pending', icon: ClipboardList, label: 'الجدد' },
-  { to: '/admin/exams', icon: FileText, label: 'الامتحانات' },
   { to: '/admin/users', icon: Users, label: 'الطلاب' },
+  { to: '/admin/pending', icon: ClipboardList, label: 'الجدد' },
+  { to: '/admin/schedule', icon: CalendarCheck, label: 'المواعيد' },
 ];
 
 const parentNavItems = [

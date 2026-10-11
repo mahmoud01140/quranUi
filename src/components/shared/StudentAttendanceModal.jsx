@@ -25,8 +25,11 @@ export const rateTone = (rate) => rate >= 85
 export function AttendancePill({ rate, onClick, label }) {
   if (rate === null || rate === undefined) {
     return (
-      <span style={{ fontSize: 12, fontWeight: 700, color: HQ.MUTED }}>
-        الحضور: —
+      <span
+        title="لا توجد حصص مسجلة لهذا الطالب بعد"
+        style={{ fontSize: 12, fontWeight: 700, color: HQ.MUTED }}
+      >
+        بلا سجل حضور
       </span>
     );
   }

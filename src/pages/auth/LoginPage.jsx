@@ -82,7 +82,6 @@ export default function LoginPage() {
                   بيانات تجريبية (بيئة التطوير):
                 </p>
                 <p className="text-xs opacity-80">Admin: admin@quran.com / Admin123!</p>
-                <p className="text-xs opacity-80">معلم: teacher1@quran.com / Teacher123!</p>
                 <p className="text-xs opacity-80">طالب: student1@quran.com / Student123!</p>
               </div>
             )}
