@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, BookOpen, Video, FileText,
-  BarChart2, Settings, BookMarked, ClipboardList,
+  Settings, BookMarked, ClipboardList,
   UserCheck, Book, TrendingUp, ChevronLeft, Sparkles,
   CalendarCheck, FolderOpen, Flame, CreditCard,
   Volume2, MessageSquare, Bell,
@@ -40,7 +40,6 @@ const adminLinks = [
   { to: '/admin/pending', icon: UserCheck, label: 'الطلاب الجدد' },
   { to: '/admin/schedule', icon: CalendarCheck, label: 'مواعيد الحصص' },
   { to: '/admin/payments', icon: CreditCard, label: 'الاشتراكات والمدفوعات' },
-  { to: '/admin/reports', icon: BarChart2, label: 'كشوف الحضور والغياب' },
   { section: 'النظام' },
   { to: '/admin/resources', icon: FolderOpen, label: 'المكتبة التعليمية' },
   { to: '/admin/onboarding-settings', icon: Settings, label: 'إعدادات تحديد المستوى' },

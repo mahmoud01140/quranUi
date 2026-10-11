@@ -57,7 +57,6 @@ const AdminPaymentsPage = lazy(() => import('./pages/admin/AdminPaymentsPage'));
 const UsersManagement = lazy(() => import('./pages/admin/UsersManagement'));
 const PendingLevelPage = lazy(() => import('./pages/admin/PendingLevelPage'));
 const SessionsSchedulePage = lazy(() => import('./pages/admin/SessionsSchedulePage'));
-const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
 const AdminExamsPage = lazy(() => import('./pages/admin/AdminExamsPage'));
 const AdminExamResultsPage = lazy(() => import('./pages/admin/AdminExamResultsPage'));
 const AdminResourcesPage = lazy(() => import('./pages/admin/AdminResourcesPage'));
@@ -157,7 +156,7 @@ export default function App() {
             <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><SessionsSchedulePage /></ProtectedRoute>} />
             <Route path="/admin/groups" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/assign" element={<Navigate to="/admin/users" replace />} />
-            <Route path="/admin/reports" element={<ProtectedRoute role="admin"><ReportsPage /></ProtectedRoute>} />
+            {/* /admin/reports removed: attendance now lives per-student (badge + record modal in UsersManagement) */}
             <Route path="/admin/live" element={<ProtectedRoute role={['admin', 'teacher']}><LiveBroadcastPage /></ProtectedRoute>} />
             <Route path="/admin/groups/:groupId/curriculum" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/exams" element={<ProtectedRoute role="admin"><AdminExamsPage /></ProtectedRoute>} />

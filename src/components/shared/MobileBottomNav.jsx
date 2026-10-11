@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, BookOpen, Video, FileText, TrendingUp,
-  Users, ClipboardList, BarChart2, BookMarked, Volume2, CreditCard,
+  Users, ClipboardList, BookMarked, Volume2, CreditCard,
 } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import '../../components/halaqa/halaqa.css';

@@ -13,6 +13,7 @@ import PhoneChip from '../../components/shared/PhoneChip';
 import ConfirmModal from '../../components/shared/ConfirmModal';
 import ChangePasswordModal from '../../components/shared/ChangePasswordModal';
 import StudentLessonsModal from '../../components/shared/StudentLessonsModal';
+import StudentAttendanceModal, { AttendancePill } from '../../components/shared/StudentAttendanceModal';
 import SessionTimePicker from '../../components/shared/SessionTimePicker';
 import Pagination from '../../components/shared/Pagination';
 import '../../components/halaqa/halaqa.css';
@@ -62,6 +63,10 @@ export default function UsersManagement() {
   // owns fetch/edit/exam/delete internally — here we only track whose modal is open)
   const [lessonsModalUser, setLessonsModalUser] = useState(null);
 
+  // Student attendance: pill rates (one fetch) + per-student record modal
+  const [attendanceUser, setAttendanceUser] = useState(null);
+  const [attendanceRates, setAttendanceRates] = useState({});
+
   // Student review file modal (survey + oral audio for level determination)
   const [reviewUser, setReviewUser] = useState(null);
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -77,6 +82,15 @@ export default function UsersManagement() {
     // خريطة المواعيد الكاملة لفحص التعارض الفوري (مرة واحدة)
     api.get('/users/schedule-map').then(res => {
       setScheduleMap(res.data.students || []);
+    }).catch(() => {});
+    // نسب الحضور لشارات الطلاب (طلب واحد يُطابَق بالـ _id — بديل صفحة الكشوف)
+    api.get('/reports/attendance', { params: { timeframe: 'month' } }).then(res => {
+      const map = {};
+      (res.data?.students || []).forEach(s => {
+        const id = s?.student?._id?.toString?.();
+        if (id) map[id] = s.attendanceRate;
+      });
+      setAttendanceRates(map);
     }).catch(() => {});
   }, []);
 
@@ -481,6 +495,12 @@ export default function UsersManagement() {
                           <HqBadge tone={ROLE_TONE[u.role] || 'neutral'}>{ROLE_LABEL[u.role] || u.role}</HqBadge>
                           {u.assignedLevel && <HqBadge tone="mentor">{getLevelLabel(u.assignedLevel)}</HqBadge>}
                           <HqBadge tone={st.tone}>{st.label}</HqBadge>
+                          {u.role === 'student' && (
+                            <AttendancePill
+                              rate={attendanceRates[u._id?.toString?.()] ?? null}
+                              onClick={() => setAttendanceUser(u)}
+                            />
+                          )}
                           {subInfo && <HqBadge tone={subInfo.tone}>{subInfo.label}{subInfo.days !== null ? ` · ${subInfo.days} يوم` : ''}</HqBadge>}
                           {self && <HqBadge tone="gold">حسابك</HqBadge>}
                         </div>
@@ -832,6 +852,8 @@ export default function UsersManagement() {
 
         {/* Student Instant Lessons Modal (shared component — same UX everywhere) */}
         <StudentLessonsModal user={lessonsModalUser} onClose={() => setLessonsModalUser(null)} />
+        {/* Student attendance record (replaces the standalone Reports page) */}
+        <StudentAttendanceModal user={attendanceUser} onClose={() => setAttendanceUser(null)} />
         {/* Student Review File Modal: survey + oral audio + level decision */}
         {reviewUser && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
