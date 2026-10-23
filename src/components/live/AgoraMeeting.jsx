@@ -96,30 +96,38 @@ export default function AgoraMeeting({
         const cleanChannel = (channel || 'quran_live').replace(/[^a-zA-Z0-9_-]/g, '_');
         await client.join(appId, cleanChannel, token || null, null);
 
-        // إنشاء المسارات المحلية
-        const audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
-          ANS: true,
-          AEC: true,
-        });
-
-        let videoTrack = null;
+        // إنشاء مسار الميكروفون
+        let audioTrack = null;
         try {
-          videoTrack = await AgoraRTC.createCameraVideoTrack({
-            encoderConfig: '720p_1',
+          audioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+            ANS: true,
+            AEC: true,
           });
-          if (!isTeacher) {
-            // الطالب يبدأ بكاميرا مغلقة
-            await videoTrack.setEnabled(false);
+        } catch (audioErr) {
+          console.warn('Microphone creation failed:', audioErr);
+        }
+
+        // إنشاء مسار الكاميرا (للمعلم فقط عند البداية، وللطالب عند طلبه ذلك فقط لتجنب طلب إذن الكاميرا بدون داعٍ وتجنب خطأ TRACK_IS_DISABLED)
+        let videoTrack = null;
+        if (isTeacher) {
+          try {
+            videoTrack = await AgoraRTC.createCameraVideoTrack({
+              encoderConfig: '720p_1',
+            });
+          } catch (camErr) {
+            console.warn('Camera creation failed:', camErr);
           }
-        } catch (_) {}
+        }
 
         localTracksRef.current = { audio: audioTrack, video: videoTrack };
 
-        // نشر المسارات
+        // نشر المسارات المفعلة فقط
         const tracksToPublish = [audioTrack, videoTrack].filter(Boolean);
-        await client.publish(tracksToPublish);
+        if (tracksToPublish.length > 0) {
+          await client.publish(tracksToPublish);
+        }
 
-        // تشغيل الفيديو المحلي
+        // تشغيل الفيديو المحلي إذا توفر
         if (videoTrack && localVideoRef.current) {
           videoTrack.play(localVideoRef.current);
         }
@@ -149,27 +157,58 @@ export default function AgoraMeeting({
     return () => {
       isMounted = false;
       const { audio, video } = localTracksRef.current;
-      if (audio) { audio.stop(); audio.close(); }
-      if (video) { video.stop(); video.close(); }
+      if (audio) {
+        audio.stop();
+        audio.close();
+      }
+      if (video) {
+        video.stop();
+        video.close();
+      }
       if (clientRef.current) {
         clientRef.current.leave().catch(() => {});
       }
     };
   }, [appId, channel, token, isTeacher]);
 
+  // كتم أو تشغيل الميكروفون باستخدام setMuted
   const toggleMic = async () => {
     const { audio } = localTracksRef.current;
     if (!audio) return;
     const next = !micMuted;
-    await audio.setEnabled(!next);
+    await audio.setMuted(next);
     setMicMuted(next);
   };
 
+  // تشغيل أو إيقاف الكاميرا
   const toggleVideo = async () => {
-    const { video } = localTracksRef.current;
-    if (!video) return;
+    let { video } = localTracksRef.current;
+
+    // إذا لم تكن الكاميرا منشأة بعد (مثل الطالب عند البداية)
+    if (!video) {
+      try {
+        const AgoraRTC = window.AgoraRTC;
+        if (!AgoraRTC) return;
+        video = await AgoraRTC.createCameraVideoTrack({
+          encoderConfig: '720p_1',
+        });
+        localTracksRef.current.video = video;
+
+        if (clientRef.current) {
+          await clientRef.current.publish([video]);
+        }
+        if (localVideoRef.current) {
+          video.play(localVideoRef.current);
+        }
+        setVideoOff(false);
+      } catch (err) {
+        console.warn('Could not start camera:', err);
+      }
+      return;
+    }
+
     const next = !videoOff;
-    await video.setEnabled(!next);
+    await video.setMuted(next);
     setVideoOff(next);
   };
 
@@ -194,7 +233,7 @@ export default function AgoraMeeting({
             <p className="text-sm font-medium">جارٍ الاتصال بشبكة Agora...</p>
           </div>
         ) : errorMsg ? (
-          <div className="p-4 bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-sm">
+          <div className="p-4 bg-rose-950/40 border border-rose-800 rounded-xl text-rose-300 text-sm max-w-md text-center">
             {errorMsg}
           </div>
         ) : (
@@ -218,33 +257,41 @@ export default function AgoraMeeting({
       {/* شريط التحكم السفلي */}
       {joined && (
         <div className="relative z-30 h-16 bg-slate-950/80 backdrop-blur-lg border-t border-white/10 px-4 flex items-center justify-center gap-3">
+          {/* الميكروفون */}
           <button
             onClick={toggleMic}
-            className={`p-3 rounded-full transition-all ${
-              micMuted ? 'bg-rose-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+            className={`p-3 rounded-full transition-all cursor-pointer ${
+              micMuted
+                ? 'bg-rose-600 text-white hover:bg-rose-700'
+                : 'bg-white/10 text-white hover:bg-white/20'
             }`}
             title={micMuted ? 'تشغيل الميكروفون' : 'كتم الميكروفون'}
           >
-            {micMuted ? <MicOff size={20} /> : <Mic size={20} />}
+            {micMuted ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
 
+          {/* الكاميرا */}
           <button
             onClick={toggleVideo}
-            className={`p-3 rounded-full transition-all ${
-              videoOff ? 'bg-rose-600 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+            className={`p-3 rounded-full transition-all cursor-pointer ${
+              videoOff
+                ? 'bg-rose-600 text-white hover:bg-rose-700'
+                : 'bg-white/10 text-white hover:bg-white/20'
             }`}
             title={videoOff ? 'تشغيل الكاميرا' : 'إيقاف الكاميرا'}
           >
-            {videoOff ? <VideoOff size={20} /> : <Video size={20} />}
+            {videoOff ? <VideoOff size={18} /> : <Video size={18} />}
           </button>
 
+          {/* إنهاء */}
           <button
             onClick={() => {
               if (onLeave) onLeave();
             }}
-            className="p-3 px-5 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 transition-all shadow-lg"
+            className="p-2.5 px-4 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
+            title="مغادرة"
           >
-            <PhoneOff size={18} />
+            <PhoneOff size={16} />
             <span className="text-xs">مغادرة</span>
           </button>
         </div>
