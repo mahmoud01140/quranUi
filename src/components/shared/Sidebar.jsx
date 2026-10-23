@@ -45,6 +45,7 @@ const adminAdvancedLinks = [
   { to: '/admin/exams', icon: FileText, label: 'بنك وإدارة الامتحانات' },
   { to: '/admin/discussions', icon: MessageSquare, label: 'رسائل واستفسارات الطلاب' },
   { to: '/admin/payments', icon: CreditCard, label: 'الاشتراكات والمدفوعات' },
+  { to: '/admin/live-settings', icon: Video, label: 'إعدادات البث المباشر' },
   { to: '/admin/resources', icon: FolderOpen, label: 'المكتبة التعليمية' },
   { to: '/admin/onboarding-settings', icon: Settings, label: 'إعدادات تحديد المستوى' },
   { to: '/admin/notifications', icon: Bell, label: 'مفتاح التنبيهات' },

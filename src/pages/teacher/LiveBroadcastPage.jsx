@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/shared/Navbar';
-import JitsiMeeting from '../../components/shared/JitsiMeeting';
+import LiveRoomAdapter from '../../components/shared/LiveRoomAdapter';
 import LiveAttendanceDrawer from '../../components/shared/LiveAttendanceDrawer';
 import useAuthStore from '../../store/authStore';
 import useLiveStore from '../../store/liveStore';
@@ -424,7 +424,8 @@ export default function LiveBroadcastPage() {
           className="halaqa-stage w-full h-full rounded-xl sm:rounded-2xl overflow-hidden relative shadow-inner"
           style={{ background: '#0F172A' }}
         >
-          <JitsiMeeting
+          <LiveRoomAdapter
+            session={session}
             roomName={session?.liveRoomName || `QuranPlatform_${session?._id || 'Session'}`}
             displayName={`أ. ${user?.firstName || ''} ${user?.lastName || ''}`}
             userEmail={user?.email || ''}

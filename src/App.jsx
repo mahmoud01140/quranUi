@@ -62,6 +62,7 @@ const AdminExamResultsPage = lazy(() => import('./pages/admin/AdminExamResultsPa
 const AdminResourcesPage = lazy(() => import('./pages/admin/AdminResourcesPage'));
 const AdminDiscussionsPage = lazy(() => import('./pages/admin/AdminDiscussionsPage'));
 const NotificationSettingsPage = lazy(() => import('./pages/admin/NotificationSettingsPage'));
+const AdminLiveSettingsPage = lazy(() => import('./pages/admin/AdminLiveSettingsPage'));
 
 // Parent
 const ParentDashboard = lazy(() => import('./pages/parent/ParentDashboard'));
@@ -151,6 +152,7 @@ export default function App() {
             <Route path="/admin/onboarding-settings" element={<ProtectedRoute role="admin"><AdminOnboardingSettingsPage /></ProtectedRoute>} />
             <Route path="/admin/notifications" element={<ProtectedRoute role="admin"><NotificationSettingsPage /></ProtectedRoute>} />
             <Route path="/admin/payments" element={<ProtectedRoute role="admin"><AdminPaymentsPage /></ProtectedRoute>} />
+            <Route path="/admin/live-settings" element={<ProtectedRoute role="admin"><AdminLiveSettingsPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute role="admin"><UsersManagement /></ProtectedRoute>} />
             <Route path="/admin/pending" element={<ProtectedRoute role="admin"><PendingLevelPage /></ProtectedRoute>} />
             <Route path="/admin/schedule" element={<ProtectedRoute role="admin"><SessionsSchedulePage /></ProtectedRoute>} />

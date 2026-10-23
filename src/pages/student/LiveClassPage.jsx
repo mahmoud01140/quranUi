@@ -6,7 +6,7 @@ import {
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import Navbar from '../../components/shared/Navbar';
-import JitsiMeeting from '../../components/shared/JitsiMeeting';
+import LiveRoomAdapter from '../../components/shared/LiveRoomAdapter';
 import MushafSharePanel from '../../components/shared/MushafSharePanel';
 import useAuthStore from '../../store/authStore';
 import useLiveStore from '../../store/liveStore';
@@ -147,14 +147,20 @@ export default function LiveClassPage() {
             setIsLive(true);
             if (!silent) toast.success('هناك حصة مباشرة الآن! جارٍ الانضمام...');
           } else {
-            setSession(null);
-            setIsLive(false);
+            resetLive();
           }
           return;
+        } else {
+          // لا توجد جلسة نشطة على السيرفر - تصفير الجلسات القديمة المنتهية
+          resetLive();
         }
+      } else {
+        resetLive();
       }
-    } catch (_) {}
-  }, [handleJoin, setSession, setIsLive]);
+    } catch (_) {
+      resetLive();
+    }
+  }, [handleJoin, setSession, setIsLive, resetLive]);
 
   useEffect(() => {
     fetchActiveSession({ silent: true });
@@ -337,7 +343,7 @@ export default function LiveClassPage() {
     return (
       <div className="halaqa" style={{ minHeight: '100vh', background: HQ.PAPER }} dir="rtl">
         <Navbar />
-        <div style={{ paddingTop: 96, padding: 16, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ padding: '96px 16px 16px 16px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 'clamp(24px,5vw,48px)', textAlign: 'center', maxWidth: 520, width: '100%' }}>
             <div style={{ width: 64, height: 64, borderRadius: 18, background: '#F8EDD3', color: '#B45309', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Lock size={30} />
@@ -372,7 +378,7 @@ export default function LiveClassPage() {
     return (
       <div className="halaqa" style={{ minHeight: '100vh', background: HQ.PAPER }} dir="rtl">
         <Navbar />
-        <div style={{ paddingTop: 96, padding: 16, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ padding: '96px 16px 16px 16px', display: 'flex', justifyContent: 'center' }}>
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 'clamp(24px,5vw,48px)', textAlign: 'center', maxWidth: 440, width: '100%' }}>
             <h2 style={{ fontSize: 22, fontWeight: 900, color: HQ.INK, margin: '0 0 8px' }}>غادرت الحصة المباشرة</h2>
             <p style={{ color: HQ.MUTED, fontSize: 14, margin: '0 0 24px' }}>يمكنك العودة في أي وقت ما دام البث مستمرًا.</p>
@@ -395,7 +401,7 @@ export default function LiveClassPage() {
     return (
       <div className="halaqa" style={{ minHeight: '100vh', background: HQ.PAPER }} dir="rtl">
         <Navbar />
-        <div style={{ paddingTop: 64, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div style={{ padding: '64px 16px 16px 16px', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ background: HQ.SURFACE, border: `1px solid ${HQ.LINE}`, borderRadius: 18, padding: 48, textAlign: 'center', maxWidth: 420, width: '100%' }}>
             <h2 style={{ fontSize: 20, fontWeight: 900, color: HQ.INK, margin: '0 0 8px' }}>لا توجد جلسة مباشرة حاليًا</h2>
             <p style={{ color: HQ.MUTED, fontSize: 14, margin: '0 0 20px' }}>عند بدء المعلم الجلسة ستنضم تلقائيًا خلال ثوانٍ.</p>
@@ -448,7 +454,8 @@ export default function LiveClassPage() {
         <div className="halaqa-stage hq-stagebox" style={{ flex: 1, minWidth: 0, borderRadius: 18, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, minHeight: 0, borderRadius: 12, overflow: 'hidden', background: '#0C0C1D', position: 'relative' }}>
             {session?._id && (
-              <JitsiMeeting
+              <LiveRoomAdapter
+                session={session}
                 roomName={session?.liveRoomName || `QuranPlatform_${session._id}`}
                 displayName={`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'طالب'}
                 userEmail={user?.email}
